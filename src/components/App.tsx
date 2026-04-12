@@ -443,7 +443,7 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
           <div style={{background:T.surface,borderRadius:14,padding:16,marginBottom:13}}>
             <p style={{fontSize:11,color:T.textSub,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>HalalScore™ — {asset.scoreHistory.length} trimestres</p>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",height:44}}>
-              {asset.scoreHistory.map((v,i) => {
+              {asset.scoreHistory.map((v: number,i: number) => {
                 const col = v>=75?T.green:v>=45?T.orange:T.red;
                 return <div key={i} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3,flex:1}}>
                   <span style={{fontSize:9,color:T.textSub}}>{v}</span>
@@ -468,7 +468,7 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
           </button>
           {showWhy && (
             <div style={{padding:"0 14px 14px"}}>
-              {asset.whyHalal.map((w,i) => (
+              {asset.whyHalal.map((w: { ok: boolean; label: string; detail: string },i: number) => (
                 <div key={i} style={{display:"flex",gap:9,marginBottom:11}}>
                   <div style={{width:18,height:18,borderRadius:5,background:w.ok?T.greenDim:T.redDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:w.ok?T.green:T.red,fontWeight:800,flexShrink:0,marginTop:1}}>{w.ok?"✓":"✗"}</div>
                   <div><p style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:2}}>{w.label}</p><p style={{fontSize:12,color:T.textSub,lineHeight:1.65}}>{w.detail}</p></div>
