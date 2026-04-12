@@ -1,12 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: #07070f;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  background: #F5F4F0;
   -webkit-font-smoothing: antialiased;
 }
-input, button, textarea { font-family: 'DM Sans', sans-serif !important; }
+input, button, textarea { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
 ::-webkit-scrollbar { display: none; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -20,5 +20,5 @@ input, button, textarea { font-family: 'DM Sans', sans-serif !important; }
 @keyframes shimmer   { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
 @keyframes spin      { to { transform:rotate(360deg) } }
 
-button:focus-visible, input:focus-visible { outline: 2px solid #00d68f; outline-offset: 2px; }
+button:focus-visible, input:focus-visible { outline: 2px solid #208640; outline-offset: 2px; }
 button:active { transform: scale(.97); }

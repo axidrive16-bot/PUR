@@ -4,16 +4,35 @@ import { usePortfolioStore, useWatchlistStore, useUserStore } from "@/store/useP
 import { AAOIFI_RULES, calcScore, scoreToStatus, calcPurification, computePortfolioMetrics } from "@/domain/aaoifi";
 import type { Asset, PortfolioItem, ChartPeriod, ChartPoint } from "@/domain/types";
 
-// ── Tokens ──────────────────────────────────────────────────────────
+// ── Tokens — PUR Design System ───────────────────────────────────────
 const T = {
-  bg:"#07070f",surface:"#0e0e1a",card:"#13131e",
-  border:"#ffffff0a",borderMid:"#ffffff14",
-  green:"#00d68f",greenDim:"#00d68f16",greenMid:"#00d68f30",
-  orange:"#ffb547",orangeDim:"#ffb54716",
-  red:"#ff4757",redDim:"#ff475716",
-  blue:"#4d8ef7",blueDim:"#4d8ef716",
-  purple:"#a78bfa",
-  text:"#eeeef8",textSub:"#6666aa",textMuted:"#333355",
+  // Backgrounds
+  bg:        "#F5F4F0",   // warm off-white main background
+  surface:   "#FFFFFF",   // elevated card surfaces
+  card:      "#FFFFFF",   // card background
+
+  // Borders — subtle, low opacity
+  border:    "rgba(0,0,0,0.07)",
+  borderMid: "rgba(0,0,0,0.12)",
+
+  // Brand — PUR Emerald Green (CTA / halal / active only)
+  green:     "#208640",
+  greenDim:  "#20864010",
+  greenMid:  "#20864028",
+
+  // Status colors
+  orange:    "#C2780C",   // douteux / warning
+  orangeDim: "#C2780C10",
+  red:       "#C93B3B",   // non-halal / negative
+  redDim:    "#C93B3B10",
+  blue:      "#2563EB",   // ESG / info
+  blueDim:   "#2563EB10",
+  purple:    "#7C3AED",
+
+  // Typography hierarchy
+  text:      "#0F172A",                   // primary text
+  textSub:   "rgba(15,23,42,0.50)",       // secondary text
+  textMuted: "rgba(15,23,42,0.28)",       // muted / disabled
 };
 const STATUS_CFG: Record<string,{color:string;dim:string;label:string;icon:string}> = {
   halal:       {color:T.green, dim:T.greenDim,  label:"Halal",        icon:"✓"},
@@ -100,7 +119,7 @@ function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div style={{position:"fixed",top:54,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:394,zIndex:999,display:"flex",flexDirection:"column",gap:7,pointerEvents:"none"}}>
         {toasts.map(t => (
-          <div key={t.id} role="alert" style={{background:T.card,border:`1px solid ${t.type==="success"?T.greenMid:T.borderMid}`,borderRadius:13,padding:"11px 15px",display:"flex",gap:10,alignItems:"center",animation:"toastIn .3s ease",boxShadow:"0 8px 28px rgba(0,0,0,.5)"}}>
+          <div key={t.id} role="alert" style={{background:T.surface,border:`1px solid ${t.type==="success"?T.greenMid:T.borderMid}`,borderRadius:16,padding:"12px 16px",display:"flex",gap:10,alignItems:"center",animation:"toastIn .3s ease",boxShadow:"0 4px 24px rgba(0,0,0,0.12)"}}>
             <span>{t.type==="success"?"✅":t.type==="error"?"❌":"ℹ️"}</span>
             <span style={{fontSize:13,fontWeight:600,color:T.text}}>{t.msg}</span>
           </div>
@@ -184,20 +203,22 @@ function AuthModal({ onClose }: { onClose: () => void }) {
 
 // ── Primitives ─────────────────────────────────────────────────────
 const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
-  <div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.82)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:300,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}} onClick={onClose}>
-    <div style={{background:T.surface,width:"100%",maxWidth:430,borderRadius:"22px 22px 0 0",padding:"20px 22px 44px",maxHeight:"90vh",overflowY:"auto",animation:"sheetUp .32s cubic-bezier(.34,1.2,.64,1)"}} onClick={e=>e.stopPropagation()}>
-      <div style={{width:36,height:4,borderRadius:2,background:T.borderMid,margin:"0 auto 20px"}}/>
+  <div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:300,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",animation:"fadeIn .2s ease"}} onClick={onClose}>
+    {/* Bottom sheet — white surface, 24px top radius */}
+    <div style={{background:T.surface,width:"100%",maxWidth:430,borderRadius:"24px 24px 0 0",padding:"20px 24px 48px",maxHeight:"92vh",overflowY:"auto",animation:"sheetUp .32s cubic-bezier(.34,1.2,.64,1)",boxShadow:"0 -8px 48px rgba(0,0,0,0.12)"}} onClick={e=>e.stopPropagation()}>
+      {/* Drag handle */}
+      <div style={{width:36,height:4,borderRadius:2,background:T.borderMid,margin:"0 auto 24px"}}/>
       {children}
     </div>
   </div>
 );
 
 function Skeleton({ w="100%", h=14, r=7 }: { w?:string|number; h?:number; r?:number }) {
-  return <div style={{width:w,height:h,borderRadius:r,background:`linear-gradient(90deg,${T.card} 25%,${T.surface} 50%,${T.card} 75%)`,backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>;
+  return <div style={{width:w,height:h,borderRadius:r,background:"linear-gradient(90deg,#EDECEA 25%,#F5F4F2 50%,#EDECEA 75%)",backgroundSize:"200% 100%",animation:"shimmer 1.5s infinite"}}/>;
 }
 function LoadingCard() {
   return (
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:16,padding:18,marginBottom:12}}>
+    <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:24,padding:22,marginBottom:12,boxShadow:"0 4px 24px rgba(0,0,0,0.04)"}}>
       <div style={{display:"flex",justifyContent:"space-between",marginBottom:14}}>
         <div style={{flex:1,marginRight:16}}><Skeleton h={20} w="60%" r={4}/><div style={{marginTop:8}}><Skeleton h={14} w="40%" r={4}/></div></div>
         <Skeleton w={48} h={48} r={24}/>
@@ -288,10 +309,10 @@ const Chart = memo(({ periods, currentPeriod, onPeriodChange, color=T.green, hei
     <div>
       <div style={{display:"flex",gap:4,marginBottom:10}}>
         {(["1D","1S","1M","1A"] as ChartPeriod[]).map(p=>(
-          <button key={p} onClick={()=>onPeriodChange(p)} style={{flex:1,height:30,background:currentPeriod===p?color:T.surface,color:currentPeriod===p?"#000":T.textSub,border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p}</button>
+          <button key={p} onClick={()=>onPeriodChange(p)} style={{flex:1,height:32,background:currentPeriod===p?color:T.bg,color:currentPeriod===p?"#FFFFFF":T.textSub,border:"none",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{p}</button>
         ))}
       </div>
-      <div style={{height:height,background:T.surface,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{height:height,background:T.bg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
         <span style={{fontSize:12,color:T.textMuted}}>Graphique disponible avec la clé FMP complète</span>
       </div>
     </div>
@@ -301,7 +322,7 @@ const Chart = memo(({ periods, currentPeriod, onPeriodChange, color=T.green, hei
     <div>
       <div style={{display:"flex",gap:4,marginBottom:10}}>
         {(["1D","1S","1M","1A"] as ChartPeriod[]).map(p=>(
-          <button key={p} onClick={()=>onPeriodChange(p)} style={{flex:1,height:30,background:currentPeriod===p?color:T.surface,color:currentPeriod===p?"#000":T.textSub,border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{p}</button>
+          <button key={p} onClick={()=>onPeriodChange(p)} style={{flex:1,height:32,background:currentPeriod===p?color:T.bg,color:currentPeriod===p?"#FFFFFF":T.textSub,border:"none",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{p}</button>
         ))}
       </div>
       <div style={{height:24,marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
@@ -341,7 +362,7 @@ function UpgradeModal({ onClose }: { onClose: () => void }) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7,marginBottom:18}}>
         {feats.map(f=><div key={f} style={{display:"flex",gap:7,alignItems:"center",fontSize:12,color:T.text}}><div style={{width:15,height:15,borderRadius:4,background:T.greenDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:T.green,fontWeight:800,flexShrink:0}}>✓</div>{f}</div>)}
       </div>
-      <div style={{background:T.card,borderRadius:14,padding:18,textAlign:"center",marginBottom:14,border:`1px solid ${T.border}`}}>
+      <div style={{background:T.bg,borderRadius:16,padding:20,textAlign:"center",marginBottom:16,border:`1px solid ${T.borderMid}`}}>
         <div style={{fontSize:34,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif"}}>{SUBSCRIPTION.PRICE_EUR}€</div>
         <div style={{fontSize:12,color:T.textSub}}>par mois · {SUBSCRIPTION.TRIAL_DAYS} jours gratuits</div>
       </div>
@@ -378,7 +399,7 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
 
   if (isLoading) return <LoadingCard/>;
   if (error || !asset) return (
-    <div style={{background:T.card,border:`1px solid ${T.red}22`,borderRadius:16,padding:18,color:T.red,fontSize:13}}>
+    <div style={{background:T.surface,border:`1px solid ${T.redDim}`,borderRadius:20,padding:20,color:T.red,fontSize:13,fontWeight:500,boxShadow:"0 4px 24px rgba(0,0,0,0.04)"}}>
       ❌ {error || "Ticker introuvable"}
     </div>
   );
@@ -389,9 +410,9 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
   const chartColor= (asset.change??0) >= 0 ? T.green : T.red;
 
   return (
-    <article aria-label={`Fiche ${ticker}`} style={{background:T.card,border:`1.5px solid ${cfg.color}22`,borderRadius:20,overflow:"hidden"}}>
-      {/* Banner */}
-      <div style={{background:cfg.dim,padding:"8px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+    <article aria-label={`Fiche ${ticker}`} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:24,overflow:"hidden",boxShadow:"0 4px 24px rgba(0,0,0,0.05)"}}>
+      {/* Status banner — colored tint strip */}
+      <div style={{background:cfg.dim,padding:"9px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${T.border}`}}>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <div style={{width:20,height:20,borderRadius:6,background:cfg.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"#000"}}>{cfg.icon}</div>
           <span style={{fontSize:12,fontWeight:800,color:cfg.color}}>{cfg.label}</span>
@@ -399,9 +420,10 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
         <span style={{fontSize:11,color:T.textSub}}>{AAOIFI_RULES.VERSION}</span>
       </div>
 
-      <div style={{padding:18}}>
+      {/* Card body — increased padding for breathing room */}
+      <div style={{padding:22}}>
         {/* Header */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
           <div>
             <h2 style={{fontSize:24,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-.5px",margin:0}}>{ticker}</h2>
             <p style={{fontSize:13,color:T.textSub,marginBottom:7}}>{asset.name}</p>
@@ -430,9 +452,9 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
         {/* Graphique */}
         <Chart periods={enrichedPeriods} currentPeriod={period} onPeriodChange={setPeriod} color={chartColor} height={110}/>
 
-        {/* Ratios AAOIFI */}
-        <div style={{background:T.surface,borderRadius:14,padding:16,marginBottom:13,marginTop:14}}>
-          <p style={{fontSize:11,color:T.textSub,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:14}}>Ratios {AAOIFI_RULES.VERSION}</p>
+        {/* AAOIFI Ratios — soft background tray */}
+        <div style={{background:T.bg,borderRadius:16,padding:18,marginBottom:14,marginTop:16,border:`1px solid ${T.border}`}}>
+          <p style={{fontSize:11,color:T.textSub,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.6px",marginBottom:16}}>Ratios {AAOIFI_RULES.VERSION}</p>
           <RatioBar label="Dette / actifs" value={asset.ratioDebt} limitKey="DEBT_MAX" detail={`${ticker} à ${asset.ratioDebt}%.`}/>
           <RatioBar label="Revenus haram"  value={asset.ratioRevHaram} limitKey="HARAM_REVENUE_MAX" detail={`${ticker} à ${asset.ratioRevHaram}%.`}/>
           <RatioBar label="Liquidités"     value={asset.ratioCash} limitKey="CASH_MAX" detail={`${ticker} à ${asset.ratioCash}%.`}/>
@@ -440,7 +462,7 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
 
         {/* Historique score (Premium) */}
         {isPremium && asset.scoreHistory.length > 0 && (
-          <div style={{background:T.surface,borderRadius:14,padding:16,marginBottom:13}}>
+          <div style={{background:T.bg,borderRadius:16,padding:18,marginBottom:14,border:`1px solid ${T.border}`}}>
             <p style={{fontSize:11,color:T.textSub,fontWeight:700,textTransform:"uppercase",letterSpacing:.5,marginBottom:10}}>HalalScore™ — {asset.scoreHistory.length} trimestres</p>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",height:44}}>
               {asset.scoreHistory.map((v: number,i: number) => {
@@ -454,14 +476,14 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
           </div>
         )}
         {!isPremium && (
-          <button onClick={()=>setShowUpgrade(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.orange}28`,borderRadius:13,padding:"11px 14px",marginBottom:13,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"inherit"}}>
+          <button onClick={()=>setShowUpgrade(true)} style={{width:"100%",background:T.bg,border:`1px solid ${T.borderMid}`,borderRadius:16,padding:"13px 16px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"inherit"}}>
             <div><div style={{fontSize:12,fontWeight:700,color:T.orange,marginBottom:2}}>⭐ Historique HalalScore™</div><div style={{fontSize:11,color:T.textSub}}>Évolution sur 2 ans</div></div>
             <span style={{fontSize:12,color:T.orange}}>→</span>
           </button>
         )}
 
-        {/* Pourquoi halal */}
-        <div style={{background:T.surface,borderRadius:14,overflow:"hidden",marginBottom:13}}>
+        {/* Pourquoi halal — collapsible tray */}
+        <div style={{background:T.bg,borderRadius:16,overflow:"hidden",marginBottom:14,border:`1px solid ${T.border}`}}>
           <button onClick={()=>setShowWhy(w=>!w)} style={{width:"100%",padding:"12px 14px",display:"flex",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}>
             <span style={{fontSize:13,fontWeight:700,color:T.text}}>Pourquoi {asset.status==="halal"?"conforme":asset.status==="douteux"?"douteuse":"non conforme"} ?</span>
             <span style={{color:T.textMuted}}>{showWhy?"▲":"▼"}</span>
@@ -480,7 +502,7 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
 
         {/* Purification */}
         {(asset.divAnnual??0) > 0 && (
-          <div style={{background:`${T.orange}0e`,border:`1px solid ${T.orange}18`,borderRadius:13,padding:13,marginBottom:13}}>
+          <div style={{background:T.bg,border:`1px solid ${T.borderMid}`,borderRadius:16,padding:16,marginBottom:14}}>
             <p style={{fontSize:12,fontWeight:700,color:T.orange,marginBottom:7}}>🌙 Purification dividendes</p>
             <div style={{display:"flex",gap:14}}>
               <div><p style={{fontSize:10,color:T.textSub,marginBottom:3}}>Dividende/an</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.divAnnual}$</p></div>
@@ -490,11 +512,11 @@ function StockCard({ ticker, onReport }: { ticker: string; onReport: (t: string)
           </div>
         )}
 
-        {/* CTAs */}
-        <div style={{display:"flex",gap:7}}>
-          <button onClick={()=>{pfAdd(asset);toast(isInPf?`${ticker} déjà dans le portefeuille`:`${ticker} ajouté ✓`,isInPf?"info":"success");}} style={{flex:1,height:48,background:T.green,border:"none",borderRadius:13,color:"#000",fontFamily:"Sora,sans-serif",fontWeight:800,fontSize:14,cursor:"pointer"}}>+ Portefeuille</button>
-          <button onClick={()=>{wlToggle(asset);toast(isWatched?`Retiré de la watchlist`:`${ticker} ajouté 🔖`);}} style={{width:48,height:48,background:isWatched?T.orangeDim:T.surface,border:`1px solid ${isWatched?T.orange:T.borderMid}`,borderRadius:13,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
-          <button onClick={()=>onReport(ticker)} style={{width:48,height:48,background:isPremium?T.surface:`${T.purple}12`,border:`1px solid ${isPremium?T.borderMid:`${T.purple}30`}`,borderRadius:13,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapport complet">📋</button>
+        {/* CTAs — 48px touch targets, 16px radius */}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>{pfAdd(asset);toast(isInPf?`${ticker} déjà dans le portefeuille`:`${ticker} ajouté ✓`,isInPf?"info":"success");}} style={{flex:1,height:50,background:T.green,border:"none",borderRadius:16,color:"#FFFFFF",fontFamily:"Sora,sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",letterSpacing:"-.1px"}}>+ Portefeuille</button>
+          <button onClick={()=>{wlToggle(asset);toast(isWatched?`Retiré de la watchlist`:`${ticker} ajouté 🔖`);}} style={{width:50,height:50,background:isWatched?T.orangeDim:T.bg,border:`1px solid ${isWatched?T.orange:T.borderMid}`,borderRadius:16,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
+          <button onClick={()=>onReport(ticker)} style={{width:50,height:50,background:isPremium?T.bg:T.bg,border:`1px solid ${T.borderMid}`,borderRadius:16,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapport complet">📋</button>
         </div>
       </div>
       {showUpgrade && <UpgradeModal onClose={()=>setShowUpgrade(false)}/>}
@@ -522,22 +544,24 @@ function HomeScreen({ setTab, openReport }: { setTab:(t:string)=>void; openRepor
 
   return (
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease"}}>
-      <header style={{padding:"52px 20px 14px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+      {/* Home header — breathing room, brand mark */}
+      <header style={{padding:"56px 24px 20px",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
         <div>
-          <p style={{fontSize:11,color:T.textSub,marginBottom:1,textTransform:"uppercase",letterSpacing:1}}>Dashboard</p>
-          <h1 style={{fontSize:22,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-.5px"}}>Halal<span style={{color:T.green}}>Screen</span></h1>
+          <p style={{fontSize:11,color:T.textSub,marginBottom:4,textTransform:"uppercase",letterSpacing:"1px",fontWeight:500}}>Dashboard</p>
+          <h1 style={{fontSize:24,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-.5px"}}>Halal<span style={{color:T.green}}>Screen</span></h1>
         </div>
-        <button onClick={()=>isPremium?null:setShowAuth(true)} style={{...BS.iconBtn,background:isPremium?"linear-gradient(135deg,#f5a623,#f0932b)":T.card}}>
+        <button onClick={()=>isPremium?null:setShowAuth(true)} style={{...BS.iconBtn,background:isPremium?"linear-gradient(135deg,#D97706,#C2780C)":T.surface}}>
           {isPremium?"⭐":"👤"}
         </button>
       </header>
 
-      {/* Portfolio */}
-      <section style={{padding:"0 20px 14px"}}>
-        <div style={{background:"linear-gradient(145deg,#101820,#0c1220)",border:`1px solid ${T.green}18`,borderRadius:22,padding:"20px 20px 14px",overflow:"hidden"}}>
+      {/* Portfolio card section */}
+      <section style={{padding:"0 24px 16px"}}>
+        {/* Dark premium portfolio card — Deep Forest on light bg */}
+        <div style={{background:"linear-gradient(145deg,#0A3B1C,#0d4a24)",border:"none",borderRadius:24,padding:"24px 24px 18px",overflow:"hidden",boxShadow:"0 8px 40px rgba(10,59,28,0.22)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
             <div>
-              <p style={{fontSize:11,color:"rgba(255,255,255,.3)",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Portefeuille</p>
+              <p style={{fontSize:11,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Portefeuille</p>
               <p style={{fontSize:32,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-1.5px"}}>{m.value.toLocaleString("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0})}</p>
               <p style={{fontSize:13,color:m.gain>=0?T.green:T.red,fontWeight:600,marginTop:2}}>{m.gain>=0?"+":""}{m.gain.toFixed(0)}€ ({m.gain>=0?"+":""}{m.gainPct.toFixed(2)}%)</p>
             </div>
@@ -546,7 +570,7 @@ function HomeScreen({ setTab, openReport }: { setTab:(t:string)=>void; openRepor
           <div style={{display:"flex",gap:0,borderTop:`1px solid ${T.border}`,paddingTop:12}}>
             {[{l:"AAOIFI",v:`${m.conform}/100`,c:T.green},{l:"ESG",v:`${m.esg}/100`,c:T.blue},{l:"Diversif.",v:`${m.divers}/100`,c:T.purple},{l:"Risque",v:`${m.risk}/100`,c:m.risk>70?T.green:T.orange}].map((s,i)=>(
               <div key={i} style={{flex:1,borderLeft:i>0?`1px solid ${T.border}`:"",paddingLeft:i>0?12:0}}>
-                <p style={{fontSize:9,color:"rgba(255,255,255,.28)",marginBottom:3}}>{s.l}</p>
+                <p style={{fontSize:9,color:"rgba(255,255,255,.50)",marginBottom:3,letterSpacing:".3px"}}>{s.l}</p>
                 <p style={{fontSize:14,fontWeight:800,color:s.c}}>{s.v}</p>
               </div>
             ))}
@@ -554,27 +578,29 @@ function HomeScreen({ setTab, openReport }: { setTab:(t:string)=>void; openRepor
         </div>
       </section>
 
-      {/* Quick actions */}
-      <section style={{padding:"0 20px 14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <button onClick={()=>setTab("screen")} style={{...BS.quickAction,background:`${T.green}0e`,border:`1px solid ${T.green}18`,color:T.green}}>
-          <span style={{fontSize:20}}>🔍</span><span style={{fontSize:13,fontWeight:700}}>Screening</span>
-          <span style={{fontSize:11,color:T.textSub,fontWeight:400}}>{isPremium?"Illimité":`${FREEMIUM.SCREENINGS-screenings} restants`}</span>
+      {/* Quick action cards — white surface, 18px radius */}
+      <section style={{padding:"0 24px 16px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <button onClick={()=>setTab("screen")} style={{...BS.quickAction,background:T.surface,color:T.green}}>
+          <span style={{fontSize:22}}>🔍</span>
+          <span style={{fontSize:14,fontWeight:700,color:T.text}}>Screening</span>
+          <span style={{fontSize:12,color:T.textSub,fontWeight:400}}>{isPremium?"Illimité":`${FREEMIUM.SCREENINGS-screenings} restants`}</span>
         </button>
-        <button onClick={()=>setTab("portfolio")} style={{...BS.quickAction,background:`${T.blue}0e`,border:`1px solid ${T.blue}18`,color:T.blue}}>
-          <span style={{fontSize:20}}>📊</span><span style={{fontSize:13,fontWeight:700}}>Portefeuille</span>
-          <span style={{fontSize:11,color:T.textSub,fontWeight:400}}>{holdings.length} positions</span>
+        <button onClick={()=>setTab("portfolio")} style={{...BS.quickAction,background:T.surface,color:T.blue}}>
+          <span style={{fontSize:22}}>📊</span>
+          <span style={{fontSize:14,fontWeight:700,color:T.text}}>Portefeuille</span>
+          <span style={{fontSize:12,color:T.textSub,fontWeight:400}}>{holdings.length} positions</span>
         </button>
       </section>
 
-      {/* Recherche rapide */}
-      <section style={{padding:"0 20px 14px"}}>
+      {/* Quick search section */}
+      <section style={{padding:"0 24px 16px"}}>
         <div style={{position:"relative"}}>
           <div style={{display:"flex",gap:8}}>
             <input style={BS.input} placeholder="Vérifier une action (ex: AAPL, MSFT)" value={q} onChange={e=>{setQ(e.target.value);if(!e.target.value)setTicker(null);}} onKeyDown={e=>e.key==="Enter"&&searchData?.results?.[0]&&setTicker(searchData.results[0].ticker)}/>
-            <button style={{...BS.iconBtn,background:T.green,width:52,flexShrink:0,fontSize:18}} onClick={()=>searchData?.results?.[0]&&setTicker(searchData.results[0].ticker)}>→</button>
+            <button style={{...BS.iconBtn,background:T.green,width:52,flexShrink:0,fontSize:18,color:"#fff",border:"none"}} onClick={()=>searchData?.results?.[0]&&setTicker(searchData.results[0].ticker)}>→</button>
           </div>
           {searchData?.results?.length > 0 && q && !ticker && (
-            <div style={{position:"absolute",top:56,left:0,right:52,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:13,zIndex:10,overflow:"hidden"}}>
+            <div style={{position:"absolute",top:60,left:0,right:56,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:16,zIndex:10,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.10)"}}>
               {searchData.results.slice(0,4).map((r: any) => (
                 <button key={r.ticker} onClick={()=>{setTicker(r.ticker);setQ(r.ticker);}} style={{width:"100%",padding:"12px 16px",display:"flex",justifyContent:"space-between",background:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
                   <div><div style={{fontSize:14,fontWeight:700,color:T.text}}>{r.ticker}</div><div style={{fontSize:12,color:T.textSub}}>{r.name}</div></div>
@@ -622,14 +648,14 @@ function ScreeningScreen({ openReport }: { openReport:(t:string)=>void }) {
         <h1 style={BS.pageTitle}>Screening</h1>
         {!isPremium && <div style={{fontSize:11,background:T.orangeDim,color:T.orange,padding:"4px 10px",borderRadius:20,fontWeight:700}}>{screenings}/{FREEMIUM.SCREENINGS}</div>}
       </header>
-      <div style={{padding:"0 20px 14px"}}>
+      <div style={{padding:"0 24px 16px"}}>
         <div style={{position:"relative"}}>
           <div style={{display:"flex",gap:8}}>
             <input style={BS.input} placeholder="Ticker ou nom de l'entreprise..." value={q} onChange={e=>{setQ(e.target.value);if(!e.target.value)setTicker(null);}}/>
-            <button style={{...BS.iconBtn,background:T.green,width:52,flexShrink:0,fontSize:18}} onClick={()=>searchData?.results?.[0]&&doSearch(searchData.results[0].ticker)}>→</button>
+            <button style={{...BS.iconBtn,background:T.green,width:52,flexShrink:0,fontSize:18,color:"#fff",border:"none"}} onClick={()=>searchData?.results?.[0]&&doSearch(searchData.results[0].ticker)}>→</button>
           </div>
           {searchData?.results?.length > 0 && q && !ticker && (
-            <div style={{position:"absolute",top:56,left:0,right:52,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:13,zIndex:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,.5)"}}>
+            <div style={{position:"absolute",top:60,left:0,right:56,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:16,zIndex:10,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.10)"}}>
               {searchData.results.slice(0,6).map((r: any) => (
                 <button key={r.ticker} onClick={()=>doSearch(r.ticker)} style={{width:"100%",padding:"12px 16px",display:"flex",justifyContent:"space-between",background:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
                   <div><div style={{fontSize:14,fontWeight:700,color:T.text}}>{r.ticker}</div><div style={{fontSize:12,color:T.textSub}}>{r.name}</div></div>
@@ -641,7 +667,7 @@ function ScreeningScreen({ openReport }: { openReport:(t:string)=>void }) {
         </div>
         <p style={{fontSize:11,color:T.textSub,marginTop:8}}>Données réelles via Financial Modeling Prep · {AAOIFI_RULES.VERSION}</p>
       </div>
-      {ticker && <div style={{padding:"0 20px 16px"}}><StockCard ticker={ticker} onReport={openReport}/></div>}
+      {ticker && <div style={{padding:"0 24px 24px"}}><StockCard ticker={ticker} onReport={openReport}/></div>}
       {showUp && <UpgradeModal onClose={()=>setShowUp(false)}/>}
     </div>
   );
@@ -663,9 +689,9 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
         <button onClick={()=>setTab("screen")} style={{...BS.microBtn,color:T.green,borderColor:`${T.green}28`,padding:"6px 14px",fontSize:12}}>+ Ajouter</button>
       </header>
 
-      {/* Valeur totale */}
-      <section style={{padding:"0 20px 14px"}}>
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:20,padding:18}}>
+      {/* Total value card */}
+      <section style={{padding:"0 24px 16px"}}>
+        <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:24,padding:22,boxShadow:"0 4px 24px rgba(0,0,0,0.04)"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
             <div>
               <p style={{fontSize:11,color:T.textSub,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Valeur totale</p>
@@ -677,10 +703,10 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
         </div>
       </section>
 
-      {/* Scores */}
-      <section style={{padding:"0 20px 14px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+      {/* Score tiles — white cards, 4-column grid */}
+      <section style={{padding:"0 24px 16px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
         {[{l:"AAOIFI",v:m.conform,c:T.green},{l:"ESG",v:m.esg,c:T.blue},{l:"Divers.",v:m.divers,c:T.purple},{l:"Risque",v:m.risk,c:m.risk>=70?T.green:T.orange}].map(s=>(
-          <div key={s.l} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:13,padding:"12px 10px"}}>
+          <div key={s.l} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,padding:"14px 10px",boxShadow:"0 2px 8px rgba(0,0,0,0.03)"}}>
             <p style={{fontSize:9,color:T.textSub,marginBottom:5,textTransform:"uppercase"}}>{s.l}</p>
             <p style={{fontSize:16,fontWeight:800,color:s.c,fontFamily:"Sora,sans-serif",marginBottom:5}}>{s.v}</p>
             <div style={{height:3,background:T.border,borderRadius:2}}><div style={{height:"100%",width:`${s.v}%`,background:s.c,borderRadius:2}}/></div>
@@ -688,10 +714,10 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
         ))}
       </section>
 
-      {/* Secteurs */}
+      {/* Sector breakdown */}
       {sectorSegs.length > 0 && (
-        <section style={{padding:"0 20px 14px"}}>
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:17,padding:18}}>
+        <section style={{padding:"0 24px 16px"}}>
+          <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,0.04)"}}>
             <p style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Répartition sectorielle</p>
             <div style={{flex:1}}>
               {sectorSegs.map(seg=>(
@@ -711,10 +737,10 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
         </section>
       )}
 
-      {/* Purification */}
+      {/* Dividend purification card */}
       {m.divTot > 0 && (
-        <section style={{padding:"0 20px 14px"}}>
-          <div style={{background:`${T.orange}0d`,border:`1px solid ${T.orange}20`,borderRadius:16,padding:17}}>
+        <section style={{padding:"0 24px 16px"}}>
+          <div style={{background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:20,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,0.04)"}}>
             <p style={{fontSize:13,fontWeight:700,color:T.orange,marginBottom:12}}>🌙 Purification des dividendes</p>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
               <div><p style={{fontSize:10,color:T.textSub,marginBottom:3}}>Dividendes/an</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{m.divTot.toFixed(2)}€</p></div>
@@ -730,10 +756,10 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
         </section>
       )}
 
-      {/* Positions */}
-      <section style={{padding:"0 20px 24px"}}>
-        <p style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:3}}>Mes positions</p>
-        <p style={{fontSize:11,color:T.textSub,marginBottom:11}}>{holdings.length} actifs</p>
+      {/* Positions list */}
+      <section style={{padding:"0 24px 32px"}}>
+        <p style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:4}}>Mes positions</p>
+        <p style={{fontSize:12,color:T.textSub,marginBottom:14}}>{holdings.length} actifs</p>
         {holdings.length === 0 ? (
           <div style={{textAlign:"center",padding:"40px 0",color:T.textSub}}>
             <p style={{fontSize:32,marginBottom:8}}>📊</p>
@@ -746,7 +772,7 @@ function PortfolioScreen({ setTab }: { setTab:(t:string)=>void }) {
           const cfg     = STATUS_CFG[h.status] ?? STATUS_CFG.halal;
           const divH    = calcPurification((h.divAnnual??0)*h.qty, h.divHaramPct??0);
           return (
-            <article key={h.ticker} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:15,padding:15,marginBottom:9}}>
+            <article key={h.ticker} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:18,padding:17,marginBottom:10,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:11}}>
                 <div style={{display:"flex",gap:11,alignItems:"center"}}>
                   <div style={{width:40,height:40,borderRadius:12,background:cfg.dim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,color:cfg.color}}>{h.ticker.slice(0,2)}</div>
@@ -791,7 +817,7 @@ function WatchlistScreen() {
         ) : sorted().map(s => {
           const cfg = STATUS_CFG[s.status] ?? STATUS_CFG.halal;
           return (
-            <div key={s.ticker} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:13,padding:14,marginBottom:9}}>
+            <div key={s.ticker} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:18,padding:16,marginBottom:10,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
                 <div style={{display:"flex",gap:9,alignItems:"center"}}>
                   <div style={{width:6,height:6,borderRadius:3,background:cfg.color}}/>
@@ -832,30 +858,31 @@ function ProfileScreen() {
           </div>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9,marginBottom:18}}>
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:13,padding:15}}><p style={{fontSize:10,color:T.textSub,marginBottom:5}}>Screenings</p><p style={{fontSize:20,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif"}}>{screenings}</p></div>
-          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:13,padding:15}}><p style={{fontSize:10,color:T.textSub,marginBottom:5}}>🌙 Purifiés</p><p style={{fontSize:20,fontWeight:800,color:T.orange,fontFamily:"Sora,sans-serif"}}>{purTotal.toFixed(2)}€</p></div>
+        {/* Profile stat tiles */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+          <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:18,padding:18,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}><p style={{fontSize:11,color:T.textSub,marginBottom:6,fontWeight:500}}>Screenings</p><p style={{fontSize:22,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif"}}>{screenings}</p></div>
+          <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:18,padding:18,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}><p style={{fontSize:11,color:T.textSub,marginBottom:6,fontWeight:500}}>🌙 Purifiés</p><p style={{fontSize:22,fontWeight:800,color:T.orange,fontFamily:"Sora,sans-serif"}}>{purTotal.toFixed(2)}€</p></div>
         </div>
 
         {!isPremium && (
-          <button onClick={()=>setShowUp(true)} style={{width:"100%",background:`linear-gradient(145deg,${T.green}10,${T.blue}07)`,border:`1px solid ${T.green}22`,borderRadius:19,padding:20,marginBottom:17,cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+          <button onClick={()=>setShowUp(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:22,padding:22,marginBottom:20,cursor:"pointer",textAlign:"left",fontFamily:"inherit",boxShadow:"0 4px 24px rgba(0,0,0,0.06)"}}>
             <p style={{fontSize:17,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",marginBottom:6}}>Passer Premium ⭐</p>
             <p style={{fontSize:13,color:T.textSub,marginBottom:14,lineHeight:1.6}}>Screenings illimités · Rapports complets · ETF islamiques</p>
             <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:13}}>
               <span style={{fontSize:26,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif"}}>{SUBSCRIPTION.PRICE_EUR}€</span>
               <span style={{fontSize:12,color:T.textSub}}>/mois · {SUBSCRIPTION.TRIAL_DAYS} jours gratuits</span>
             </div>
-            <div style={{background:T.green,borderRadius:12,padding:"12px",textAlign:"center",fontSize:14,fontWeight:800,color:"#000"}}>Commencer gratuitement</div>
+            <div style={{background:T.green,borderRadius:14,padding:"13px",textAlign:"center",fontSize:14,fontWeight:700,color:"#FFFFFF",letterSpacing:"-.1px"}}>Commencer gratuitement</div>
           </button>
         )}
 
-        <button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:16,marginBottom:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left"}}>
+        <button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:18,padding:18,marginBottom:14,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left",boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}}>
           <div style={{display:"flex",gap:11,alignItems:"center"}}><span style={{fontSize:17}}>🔐</span><span style={{fontSize:14,color:T.text}}>Se connecter / Créer un compte</span></div>
           <span style={{color:T.textMuted}}>›</span>
         </button>
 
         {[{icon:"🌙",label:"Purification dividendes"},{icon:"🏛",label:`Méthodologie ${AAOIFI_RULES.VERSION}`},{icon:"💬",label:"Support"}].map(item=>(
-          <button key={item.label} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}>
+          <button key={item.label} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}>
             <div style={{display:"flex",gap:11,alignItems:"center"}}><span style={{fontSize:17}}>{item.icon}</span><span style={{fontSize:14,color:T.text}}>{item.label}</span></div>
             <span style={{color:T.textMuted}}>›</span>
           </button>
@@ -869,19 +896,25 @@ function ProfileScreen() {
   );
 }
 
-// ── Base styles ────────────────────────────────────────────────────
+// ── Base styles — PUR Design System ────────────────────────────────
 const BS = {
-  pageHeader: {padding:"52px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"},
-  pageTitle:  {fontSize:22,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-.5px"} as React.CSSProperties,
-  input:      {flex:1,height:50,border:`1.5px solid ${T.border}`,borderRadius:13,padding:"0 15px",fontSize:15,outline:"none",background:T.card,color:T.text,fontFamily:"inherit",transition:"border-color .2s"} as React.CSSProperties,
-  iconBtn:    {width:44,height:44,borderRadius:12,background:T.card,border:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18} as React.CSSProperties,
-  btnPrimary: {width:"100%",height:52,background:T.green,border:"none",borderRadius:15,color:"#000",fontFamily:"Sora,sans-serif",fontWeight:800,fontSize:16,cursor:"pointer"} as React.CSSProperties,
-  btnGhost:   {height:42,background:"none",border:`1px solid ${T.border}`,borderRadius:11,color:T.textSub,fontFamily:"inherit",fontWeight:600,fontSize:13,cursor:"pointer"} as React.CSSProperties,
-  microBtn:   {height:30,padding:"0 11px",background:"none",border:"1px solid",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"} as React.CSSProperties,
-  quickAction:{display:"flex",flexDirection:"column",gap:4,padding:"17px 15px",borderRadius:15,border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"} as React.CSSProperties,
-  segCtrl:    {display:"flex",background:T.card,borderRadius:11,padding:3,border:`1px solid ${T.border}`} as React.CSSProperties,
-  seg:        {flex:1,height:34,background:"none",border:"none",borderRadius:9,color:T.textSub,fontFamily:"inherit",fontWeight:600,fontSize:13,cursor:"pointer",transition:"all .15s"} as React.CSSProperties,
-  segActive:  {background:T.surface,color:T.text,boxShadow:"0 1px 3px rgba(0,0,0,.4)"} as React.CSSProperties,
+  // Increased top padding for breathing room
+  pageHeader: {padding:"56px 24px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"},
+  // Sora kept for display headings only
+  pageTitle:  {fontSize:24,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-.5px"} as React.CSSProperties,
+  // Larger input, white bg, subtle border
+  input:      {flex:1,height:52,border:`1.5px solid ${T.borderMid}`,borderRadius:16,padding:"0 16px",fontSize:15,outline:"none",background:T.surface,color:T.text,fontFamily:"inherit",transition:"border-color .2s",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"} as React.CSSProperties,
+  // 48px min touch target (PUR spec)
+  iconBtn:    {width:48,height:48,borderRadius:14,background:T.surface,border:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:18,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"} as React.CSSProperties,
+  // Primary CTA — emerald green, white text, 16px+ radius
+  btnPrimary: {width:"100%",height:54,background:T.green,border:"none",borderRadius:16,color:"#FFFFFF",fontFamily:"Sora,sans-serif",fontWeight:700,fontSize:16,cursor:"pointer",letterSpacing:"-.2px"} as React.CSSProperties,
+  btnGhost:   {height:46,background:"none",border:`1.5px solid ${T.borderMid}`,borderRadius:14,color:T.textSub,fontFamily:"inherit",fontWeight:600,fontSize:13,cursor:"pointer"} as React.CSSProperties,
+  microBtn:   {height:32,padding:"0 12px",background:"none",border:"1px solid",borderRadius:10,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"} as React.CSSProperties,
+  // Quick action cards — white surface, soft shadow
+  quickAction:{display:"flex",flexDirection:"column",gap:6,padding:"18px 16px",borderRadius:18,border:`1px solid ${T.border}`,cursor:"pointer",textAlign:"left",fontFamily:"inherit",boxShadow:"0 2px 12px rgba(0,0,0,0.04)"} as React.CSSProperties,
+  segCtrl:    {display:"flex",background:T.bg,borderRadius:12,padding:3,border:`1px solid ${T.border}`} as React.CSSProperties,
+  seg:        {flex:1,height:36,background:"none",border:"none",borderRadius:10,color:T.textSub,fontFamily:"inherit",fontWeight:600,fontSize:13,cursor:"pointer",transition:"all .15s"} as React.CSSProperties,
+  segActive:  {background:T.surface,color:T.text,boxShadow:"0 1px 6px rgba(0,0,0,0.08)"} as React.CSSProperties,
 };
 
 const TABS = [
@@ -910,19 +943,21 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <div style={{minHeight:"100vh",background:"#030308",display:"flex",justifyContent:"center"}}>
+      <div style={{minHeight:"100vh",background:"#ECEAE5",display:"flex",justifyContent:"center"}}>
         <div style={{width:"100%",maxWidth:430,minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
 
           {/* Splash */}
           {phase === "splash" && (
-            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:22,animation:splashOut?"fadeOut .35s ease forwards":"none"}}>
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:24,animation:splashOut?"fadeOut .35s ease forwards":"none"}}>
               <div style={{animation:"fadeUp .5s ease forwards",opacity:0,textAlign:"center"}}>
-                <div style={{width:84,height:84,borderRadius:25,background:`linear-gradient(135deg,${T.green}22,${T.green}07)`,border:`1.5px solid ${T.green}35`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:38,margin:"0 auto 20px",boxShadow:`0 0 44px ${T.green}14`}}>🕌</div>
-                <h1 style={{fontSize:32,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-1px"}}>Halal<span style={{color:T.green}}>Screen</span></h1>
-                <p style={{fontSize:12,color:T.textSub,marginTop:6}}>{AAOIFI_RULES.VERSION} · Finance islamique</p>
+                {/* Icon mark */}
+                <div style={{width:88,height:88,borderRadius:28,background:`linear-gradient(145deg,#0A3B1C,#208640)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,margin:"0 auto 24px",boxShadow:`0 16px 48px ${T.green}30`}}>🕌</div>
+                <h1 style={{fontSize:34,fontWeight:800,color:T.text,fontFamily:"Sora,sans-serif",letterSpacing:"-1px"}}>Halal<span style={{color:T.green}}>Screen</span></h1>
+                <p style={{fontSize:12,color:T.textSub,marginTop:8,letterSpacing:".4px"}}>{AAOIFI_RULES.VERSION} · Finance islamique</p>
               </div>
-              <div style={{display:"flex",gap:6,animation:"fadeUp .5s .25s ease forwards",opacity:0}}>
-                {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:3,background:T.green,animation:`blink 1.2s ${i*.2}s ease-in-out infinite alternate`}}/>)}
+              {/* Loading dots */}
+              <div style={{display:"flex",gap:7,animation:"fadeUp .5s .25s ease forwards",opacity:0}}>
+                {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:3,background:T.green,opacity:.3,animation:`blink 1.2s ${i*.2}s ease-in-out infinite alternate`}}/>)}
               </div>
             </div>
           )}
@@ -949,12 +984,15 @@ export default function App() {
                   {tab==="watchlist" && <WatchlistScreen/>}
                   {tab==="profile"   && <ProfileScreen/>}
 
-                  <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:`${T.surface}f2`,borderTop:`1px solid ${T.border}`,backdropFilter:"blur(20px)",display:"flex",padding:"8px 0 24px",zIndex:100}}>
+                  {/* Bottom nav — elevated white, top border divider */}
+                  <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"rgba(255,255,255,0.94)",borderTop:`1px solid ${T.border}`,backdropFilter:"blur(24px)",WebkitBackdropFilter:"blur(24px)",display:"flex",padding:"8px 0 24px",zIndex:100,boxShadow:"0 -4px 24px rgba(0,0,0,0.05)"}}>
                     {TABS.map(t => (
                       <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 0",fontFamily:"inherit"}}>
-                        <span style={{fontSize:19,filter:tab===t.id?"none":"grayscale(1) opacity(0.28)",transition:"filter .2s"}}>{t.icon}</span>
-                        <span style={{fontSize:10,fontWeight:tab===t.id?700:400,color:tab===t.id?T.green:T.textMuted}}>{t.label}</span>
-                        {tab===t.id && <div style={{width:14,height:2,borderRadius:1,background:T.green}}/>}
+                        {/* Icon — active full opacity, inactive muted */}
+                        <span style={{fontSize:19,filter:tab===t.id?"none":"grayscale(1) opacity(0.30)",transition:"filter .2s"}}>{t.icon}</span>
+                        <span style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?T.green:T.textMuted,letterSpacing:".1px"}}>{t.label}</span>
+                        {/* Active dot indicator */}
+                        {tab===t.id && <div style={{width:4,height:4,borderRadius:2,background:T.green}}/>}
                       </button>
                     ))}
                   </nav>
