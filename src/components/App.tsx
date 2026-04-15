@@ -402,7 +402,10 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
           <div style={{background:T.surface2,borderRadius:12,padding:14,marginBottom:13}}>
             <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textMuted,marginBottom:10}}>Évolution du score — {asset.scoreHistory.length} trimestres</p>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",height:40}}>
-              {(asset.scoreHistory as any[]).map((v: number, i: number) => { const si2 = scoreInfo(v); return <div key={i}
+              {(asset.scoreHistory as any[]).map((v: number, i: number) => { 
+                const si2 = scoreInfo(v); 
+                return <div key={i} style={{ height: 20, width: 4, background: si2.color, borderRadius: 2 }} />;
+              })}
             </div>
           </div>
         )}
