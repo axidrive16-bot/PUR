@@ -1,7 +1,12 @@
+#!/bin/bash
+# ═══════════════════════════════════════════════════════════════════
+# PUR — Setup 8 : Redesign complet
+# ═══════════════════════════════════════════════════════════════════
+set -e
+echo "🌿 PUR — Redesign v3..."
+
+cat > src/components/App.tsx << 'APPEOF'
 "use client";
-import { useGamificationStore, computeLevel } from "@/store/useGamificationStore";
-import LearnScreen from "@/components/LearnScreen";
-import { InfoTooltip } from "@/components/ScoreTooltip";
 import { useState, useEffect, useCallback, useMemo, useRef, memo, useReducer } from "react";
 import { usePortfolioStore, useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
 import { AAOIFI_RULES, calcScore, scoreToStatus, calcPurification, computePortfolioMetrics } from "@/domain/aaoifi";
@@ -417,7 +422,7 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
           <button onClick={()=>{pfCtx.addToActive(asset);toast(isInPf?`${ticker} déjà dans le portefeuille`:`${ticker} ajouté ✓`,isInPf?"info":"success");}} style={{flex:1,height:46,background:isInPf?T.greenBg:T.forest,border:`1px solid ${isInPf?T.green:T.forest}`,borderRadius:12,color:isInPf?T.green:"#E8F0EB",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
             {isInPf?"Déjà dans le portefeuille ✓":"+ Ajouter"}
           </button>
-          <button onClick={()=>{const wasWl=isWatched;wlToggle(asset);if(!wasWl){useGamificationStore.getState().trackWatchlist();}toast(wasWl?`Retiré`:`${ticker} suivi 🔖`);}} style={{width:46,height:46,background:isWatched?T.greenBg:T.surface2,border:`1px solid ${isWatched?T.green:T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
+          <button onClick={()=>{wlToggle(asset);toast(isWatched?`Retiré`:`${ticker} suivi 🔖`);}} style={{width:46,height:46,background:isWatched?T.greenBg:T.surface2,border:`1px solid ${isWatched?T.green:T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
           <button onClick={()=>onReport(ticker)} style={{width:46,height:46,background:T.surface2,border:`1px solid ${T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapport">📋</button>
         </div>
       </div>
@@ -584,8 +589,7 @@ function ScreeningScreen({openReport}:{openReport:(t:string)=>void}){
   const[q,setQ]=useState("");const[ticker,setTicker]=useState<string|null>(null);
   const[showUp,setShowUp]=useState(false);
   const dq=useDebounce(q,300);const{data:sr}=useSearch(dq);
-  const gStore=useGamificationStore();
-  const doSearch=(t:string)=>{if(!isPremium&&screenings>=FREEMIUM.SCREENINGS){setShowUp(true);return;}inc();gStore.trackAnalysis();gStore.checkStreak();setTicker(t);setQ(t);};
+  const doSearch=(t:string)=>{if(!isPremium&&screenings>=FREEMIUM.SCREENINGS){setShowUp(true);return;}inc();setTicker(t);setQ(t);};
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
       <header style={BS.pageHeader}><h1 style={BS.pageTitle}>Analyser</h1>{!isPremium&&<div style={{fontSize:11,background:T.amberBg,color:T.amber,padding:"4px 10px",borderRadius:100,fontWeight:700}}>{screenings}/{FREEMIUM.SCREENINGS}</div>}</header>
@@ -675,9 +679,9 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
 
       {/* Score cards */}
       <section style={{padding:"0 20px 14px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-        {[{l:"Score",v:m.conform,c:T.green,s:m.conform>=75?"Conforme":"Douteux",tip:"score"},{l:"Durabilité",v:m.esg,c:T.leaf,s:"",tip:"esg"},{l:"Diversif.",v:m.divers,c:T.amber,s:"",tip:"divers"},{l:"Sécurité",v:m.risk,c:m.risk>=70?T.green:T.amber,s:"",tip:"risque"}].map(s=>(
+        {[{l:"Score",v:m.conform,c:T.green,s:m.conform>=75?"Conforme":"Douteux"},{l:"Durabilité",v:m.esg,c:T.leaf,s:""},{l:"Diversif.",v:m.divers,c:T.amber,s:""},{l:"Sécurité",v:m.risk,c:m.risk>=70?T.green:T.amber,s:""}].map(s=>(
           <div key={s.l} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:12,padding:"10px 9px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}><p style={{fontSize:9,color:T.textMuted,textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.l}</p>{(s as any).tip&&<InfoTooltip id={(s as any).tip}/>}</div>
+            <p style={{fontSize:9,color:T.textMuted,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.l}</p>
             <p style={{fontSize:16,fontWeight:800,color:s.c}}>{s.v}</p>
             {s.s&&<p style={{fontSize:8,color:s.c,fontWeight:700,marginTop:1}}>{s.s}</p>}
             <div style={{height:3,background:T.surface2,borderRadius:100,marginTop:4}}><div style={{height:"100%",width:`${s.v}%`,background:s.c,borderRadius:100}}/></div>
@@ -891,12 +895,10 @@ const TABS=[
         <rect x="13.5" y="4" width="3.5" height="13" rx="1" fill={active?T.forest:"#A8A49C"} opacity={active?1:.5}/>
       </svg>
     )},
-  {id:"learn",label:"Apprendre",
+  {id:"watchlist",label:"Watchlist",
     icon:(active:boolean)=>(
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M3 5H17M3 10H17M3 15H11" stroke={active?T.forest:"#A8A49C"} strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="15" cy="15" r="3" stroke={active?T.forest:"#A8A49C"} strokeWidth="1.5"/>
-        <path d="M15 13.5V15L16 16" stroke={active?T.forest:"#A8A49C"} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 3H15C15.5523 3 16 3.44772 16 4V18L10 15L4 18V4C4 3.44772 4.44772 3 5 3Z" stroke={active?T.forest:"#A8A49C"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill={active?T.greenBg:"none"}/>
       </svg>
     )},
   {id:"profile",label:"Profil",
@@ -965,7 +967,6 @@ export default function App(){
               {tab==="screen"    &&<ScreeningScreen openReport={openReport}/>}
               {tab==="portfolio" &&<PortfolioScreen setTab={setTab}/>}
               {tab==="watchlist" &&<WatchlistScreen/>}
-              {tab==="learn"      &&<LearnScreen/>}
               {tab==="profile"   &&<ProfileScreen/>}
 
               <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",padding:"8px 0 24px",zIndex:100}}>
@@ -984,3 +985,19 @@ export default function App(){
     </ToastProvider>
   );
 }
+APPEOF
+
+echo ""
+echo "✅ PUR v3 — Redesign complet !"
+echo ""
+echo "Nouvelles fonctionnalités :"
+echo "  ✓ Y-axis visible sur tous les graphiques"
+echo "  ✓ Market Insights — opportunités filtrables"
+echo "  ✓ Multi-portefeuilles (créer, renommer, supprimer)"
+echo "  ✓ Calcul Zakat 2.5% automatique"
+echo "  ✓ Logo PUR fidèle à l'image"
+echo "  ✓ Icône maison sur l'onglet Accueil"
+echo "  ✓ Plus aucune mention technique religieuse"
+echo "  ✓ Hero splash aligné : PUR + tagline"
+echo "  ✓ Icônes SVG custom sur toute la navbar"
+echo ""

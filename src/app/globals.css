@@ -1,12 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ── Brand ── */
+  --pur-forest:      #1A3A2A;
+  --pur-emerald:     #208640;
+  --pur-leaf:        #639922;
+  --pur-gold:        #C9A84C;
+
+  /* ── Backgrounds ── */
+  --pur-bg:          #F7F5F0;
+  --pur-surface:     #FFFFFF;
+  --pur-surface-2:   #F2F0EB;
+
+  /* ── Text ── */
+  --pur-text:        #1A1A16;
+  --pur-text-sub:    #6B6960;
+  --pur-text-muted:  #A8A49C;
+
+  /* ── Semantic ── */
+  --pur-halal:       #208640;
+  --pur-halal-bg:    #EAF3DE;
+  --pur-halal-mid:   #639922;
+  --pur-doubtful:    #B07D2A;
+  --pur-doubtful-bg: #FDF3E0;
+  --pur-haram:       #A32D2D;
+  --pur-haram-bg:    #FCEBEB;
+
+  /* ── Border ── */
+  --pur-border:      rgba(0,0,0,0.08);
+}
+
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  background: #F5F4F0;
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  background: var(--pur-bg);
+  color: var(--pur-text);
   -webkit-font-smoothing: antialiased;
 }
-input, button, textarea { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
+
+input, button, textarea { font-family: 'Cabinet Grotesk', system-ui, sans-serif !important; }
 ::-webkit-scrollbar { display: none; }
 * { -ms-overflow-style: none; scrollbar-width: none; }
 
@@ -20,5 +53,5 @@ input, button, textarea { font-family: 'Inter', -apple-system, BlinkMacSystemFon
 @keyframes shimmer   { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
 @keyframes spin      { to { transform:rotate(360deg) } }
 
-button:focus-visible, input:focus-visible { outline: 2px solid #208640; outline-offset: 2px; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--pur-emerald); outline-offset: 2px; }
 button:active { transform: scale(.97); }
