@@ -442,7 +442,7 @@ function MarketInsights({onSearch}:{onSearch:(t:string)=>void}){
       </div>
       {/* Filtres */}
       <div style={{display:"flex",gap:6,marginBottom:14}}>
-        {([["all","Tous"],["top","Actions"],["etf","ETF"]] as const).map(([id,lbl])=><button key={id} onClick={()=>setFilter(id)} style={{height:28,padding:"0 12px",background:filter==="id"?T.forest:T.surface2,color:filter===id?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{lbl}</button>)}
+        {([["all","Tous"],["top","Actions"],["etf","ETF"]] as const).map(([id,lbl])=><button key={id} onClick={()=>setFilter(id)} style={{height:28,padding:"0 12px",background:filter===id?T.forest:T.surface2,color:filter===id?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{lbl}</button>)}
       </div>
       {/* Cards horizontales */}
       <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:4}}>
