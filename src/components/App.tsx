@@ -32,7 +32,7 @@ const SECTOR_COLORS = [T.emerald,"#4A7C3F","#639922","#C9A84C","#B07D2A","#8B691
 
 // ── Score label ────────────────────────────────────────────────────
 function scoreInfo(score: number) {
-  if (score >= 75) return { label:"Conforme ✓",     color:T.green, bg:T.greenBg };
+  if (score >= 75) return { label:"Conforme ✓",      color:T.green, bg:T.greenBg };
   if (score >= 40) return { label:"À surveiller",   color:T.amber, bg:T.amberBg };
   return               { label:"Non conforme",      color:T.red,   bg:T.redBg   };
 }
@@ -251,7 +251,7 @@ RatioBar.displayName="RatioBar";
 const Modal=({children,onClose}:{children:React.ReactNode;onClose:()=>void})=>(
   <div role="dialog" aria-modal="true" onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:300,backdropFilter:"blur(6px)",animation:"fadeIn .2s ease"}}>
     <div onClick={e=>e.stopPropagation()} style={{background:T.surface,width:"100%",maxWidth:430,borderRadius:"20px 20px 0 0",padding:"20px 22px 44px",maxHeight:"92vh",overflowY:"auto",animation:"sheetUp .32s cubic-bezier(.34,1.2,.64,1)"}}>
-      <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:"0 auto 20px"}}/>
+      <div style={{width:36,height:4,borderRadius:2,background:T.border,margin:"0 auto 20px Fitz"}}/>
       {children}
     </div>
   </div>
@@ -413,7 +413,7 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
         {/* Pourquoi */}
         <div style={{background:T.surface2,borderRadius:12,overflow:"hidden",marginBottom:13}}>
           <button onClick={()=>setShowWhy(w=>!w)} style={{width:"100%",padding:"11px 14px",display:"flex",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}><span style={{fontSize:13,fontWeight:700,color:T.text}}>Pourquoi {asset.status==="halal"?"conforme":asset.status==="douteux"?"à surveiller":"non conforme"} ?</span><span style={{color:T.textMuted,fontSize:12}}>{showWhy?"▲":"▼"}</span></button>
-          {showWhy&&<div style={{padding:"0 14px 14px"}}>{asset.whyHalal.map((w,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:10}}><div style={{width:16,height:16,borderRadius:4,background:w.ok?T.greenBg:T.redBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:w.ok?T.green:T.red,fontWeight:800,flexShrink:0,marginTop:1}}>{w.ok?"✓":"✕"}</div><div><p style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{w.label}</p><p style={{fontSize:11,color:T.textSub,lineHeight:1.6}}>{w.detail}</p></div></div>)}</div>}
+          {showWhy&&<div style={{padding:"0 14px 14px"}}>{(asset.whyHalal as any[]).map((w: any, i: number) => <div key={i} style={{display:"flex",gap:8,marginBottom:10}}><div style={{width:16,height:16,borderRadius:4,background:w.ok?T.greenBg:T.redBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:w.ok?T.green:T.red,fontWeight:800,flexShrink:0,marginTop:1}}>{w.ok?"✓":"✕"}</div><div><p style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{w.label}</p><p style={{fontSize:11,color:T.textSub,lineHeight:1.6}}>{w.detail}</p></div></div>)}</div>}
         </div>
         {/* Purification */}
         {(asset.divAnnual??0)>0&&<div style={{background:T.goldLight,border:`1px solid ${T.gold}30`,borderRadius:12,padding:14,marginBottom:14}}><p style={{fontSize:12,fontWeight:700,color:T.amber,marginBottom:7}}>Purification des dividendes</p><div style={{display:"flex",gap:16}}><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Dividende/an</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.divAnnual}$</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Part à purifier</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{asset.divHaramPct}%</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Montant</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{calcPurification(asset.divAnnual??0,asset.divHaramPct??0).toFixed(3)}$</p></div></div></div>}
@@ -442,7 +442,7 @@ function MarketInsights({onSearch}:{onSearch:(t:string)=>void}){
       </div>
       {/* Filtres */}
       <div style={{display:"flex",gap:6,marginBottom:14}}>
-        {([["all","Tous"],["top","Actions"],["etf","ETF"]] as const).map(([id,lbl])=><button key={id} onClick={()=>setFilter(id)} style={{height:28,padding:"0 12px",background:filter===id?T.forest:T.surface2,color:filter===id?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{lbl}</button>)}
+        {([["all","Tous"],["top","Actions"],["etf","ETF"]] as const).map(([id,lbl])=><button key={id} onClick={()=>setFilter(id)} style={{height:28,padding:"0 12px",background:filter==="id"?T.forest:T.surface2,color:filter===id?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{lbl}</button>)}
       </div>
       {/* Cards horizontales */}
       <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:4}}>
