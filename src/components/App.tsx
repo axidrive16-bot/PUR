@@ -19,10 +19,12 @@ const T = {
   red:"#A32D2D", redBg:"#FCEBEB",
   darkBg:"#111A14", darkSurface:"#1A2A20",
 };
-const STATUS = {
-  halal:       { color:T.green,  bg:T.greenBg, label:"Conforme",     icon:"✓" },
-  douteux:     { color:T.amber,  bg:T.amberBg, label:"À surveiller", icon:"!" },
-  "non-halal": { color:T.red,    bg:T.redBg,   label:"Non conforme", icon:"✕" },
+const STATUS: any = {
+  "conforme": { color: "#208640", bg: "#EAF3DE", label: "Conforme", icon: "✅" },
+  "douteux": { color: "#B07D2A", bg: "#FDF3E0", label: "Douteux", icon: "⚠️" },
+  "non conforme": { color: "#A32D2D", bg: "#FCEBEB", label: "Non conforme", icon: "❌" },
+  "halal": { color: "#208640", bg: "#EAF3DE", label: "Conforme", icon: "✅" },
+  "non-halal": { color: "#A32D2D", bg: "#FCEBEB", label: "Non conforme", icon: "❌" }
 };
 const FREEMIUM = { SCREENINGS: 3 };
 const SUB = { PRICE: 9.99, TRIAL: 7 };
@@ -349,7 +351,7 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
   },[asset,data,period]);
   if(isLoading)return<div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,padding:20}}><Sk h={22} w="55%" r={4}/><div style={{marginTop:8}}><Sk h={14} w="35%" r={4}/></div><div style={{marginTop:14}}><Sk h={110} r={8}/></div></div>;
   if(error||!asset)return<div style={{background:T.redBg,border:`1px solid ${T.red}22`,borderRadius:16,padding:18,color:T.red,fontSize:13}}>Ticker introuvable : {ticker}</div>;
-  const cfg=STATUS[asset.status]??STATUS.halal;
+  const cfg = STATUS[asset.status] ?? STATUS["conforme"] ?? STATUS.halal;
   const si=scoreInfo(asset.score);
   const isInPf=pfCtx.inActive(ticker);
   const isWatched=inWl(ticker);
