@@ -1,11 +1,13 @@
 "use client";
-import { useGamificationStore, computeLevel } from "@/store/useGamificationStore";
+import { useGamificationStore } from "@/store/useGamificationStore";
 import LearnScreen from "@/components/LearnScreen";
 import { InfoTooltip } from "@/components/ScoreTooltip";
-import { useState, useEffect, useCallback, useMemo, useRef, memo, useReducer } from "react";
-import { usePortfolioStore, useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
-import { AAOIFI_RULES, calcScore, scoreToStatus, calcPurification, computePortfolioMetrics } from "@/domain/aaoifi";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
+import { calcPurification, computePortfolioMetrics } from "@/domain/aaoifi";
 import type { Asset, PortfolioItem, ChartPeriod, ChartPoint } from "@/domain/types";
+import { auth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 // ── Design Tokens ──────────────────────────────────────────────────
 const T = {
@@ -302,7 +304,7 @@ const Modal=({children,onClose}:{children:React.ReactNode;onClose:()=>void})=>(
 
 // ── Upgrade Modal ─────────────────────────────────────────────────
 function UpgradeModal({onClose}:{onClose:()=>void}){
-  const set=useUserStore(s=>s.setIsPremium);const toast=useToast();
+  const toast=useToast();
   const feats=["Screenings illimités","ETF & fonds conformes","Bilans d'entreprise","Alertes de conformité","Historique du score","Score de durabilité","Calcul Zakat automatique","Support prioritaire"];
   return(
     <Modal onClose={onClose}>
@@ -317,7 +319,7 @@ function UpgradeModal({onClose}:{onClose:()=>void}){
         <span style={{fontSize:13,color:T.textSub}}> / mois</span>
         <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>{SUB.TRIAL} jours gratuits · Résiliable</div>
       </div>
-      <button style={BS.btnPrimary} onClick={()=>{set(true);toast("Premium activé ✓");onClose();}}>Commencer — {SUB.TRIAL} jours gratuits</button>
+      <button style={BS.btnPrimary} onClick={()=>{toast("Paiement bientôt disponible — revenez très vite !","info");onClose();}}>Commencer — {SUB.TRIAL} jours d'essai gratuit</button>
       <button style={{...BS.btnGhost,width:"100%",marginTop:10}} onClick={onClose}>Pas maintenant</button>
     </Modal>
   );
@@ -333,7 +335,18 @@ function AuthModal({onClose}:{onClose:()=>void}){
     setErr("");if(!email||!pw){setErr("Tous les champs sont requis.");return;}
     if(mode==="signup"&&pw!==pw2){setErr("Les mots de passe ne correspondent pas.");return;}
     setL(true);
-    try{const res=await fetch(`/api/auth/${mode}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})});const data=await res.json();if(!res.ok){setErr(data.error??"Erreur");setL(false);return;}if(data.needsConfirmation){setOk(true);setL(false);return;}toast("Bienvenue !");onClose();window.location.reload();}catch{setErr("Erreur réseau");}
+    try{
+      if(mode==="signup"){
+        const{error,needsConfirmation}=await auth.signUp(email,pw);
+        if(error){setErr(error);setL(false);return;}
+        if(needsConfirmation){setOk(true);setL(false);return;}
+      }else{
+        const{error}=await auth.signIn(email,pw);
+        if(error){setErr(error);setL(false);return;}
+      }
+      // onAuthStateChange dans App root prend en charge la session + premium
+      toast("Bienvenue !");onClose();
+    }catch{setErr("Erreur réseau");}
     setL(false);
   };
   if(ok)return<Modal onClose={onClose}><div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:48,marginBottom:14}}>📧</div><h2 style={{fontSize:20,fontWeight:800,color:T.text,marginBottom:10}}>Vérifiez votre email</h2><p style={{fontSize:13,color:T.textSub,lineHeight:1.7}}>Lien envoyé à <strong style={{color:T.text}}>{email}</strong></p><button style={{...BS.btnGhost,marginTop:20,padding:"0 24px"}} onClick={onClose}>Fermer</button></div></Modal>;
@@ -1484,6 +1497,42 @@ export default function App(){
   const[tab,setTab]=useState("home");
   const[reportTicker,setReportTicker]=useState<string|null>(null);
   const pfCtx=usePortfolios();
+
+  // ── Auth + premium init ──────────────────────────────────────────
+  const setUser=useUserStore(s=>s.setUser);
+  const setIsPremium=useUserStore(s=>s.setIsPremium);
+  const resetUser=useUserStore(s=>s.reset);
+
+  useEffect(()=>{
+    const validatePremium=async(token:string)=>{
+      try{
+        const res=await fetch("/api/subscription/validate",{headers:{Authorization:`Bearer ${token}`}});
+        if(res.ok){const{isPremium}=await res.json();setIsPremium(isPremium);}
+      }catch{}
+    };
+
+    // Vérifie la session existante au démarrage (refresh token persisté)
+    auth.getSession().then(session=>{
+      if(session){
+        setUser({id:session.user.id,email:session.user.email??null});
+        validatePremium(session.access_token);
+      }
+    });
+
+    // Écoute les changements de session (login, logout, refresh token)
+    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
+      if(session){
+        setUser({id:session.user.id,email:session.user.email??null});
+        await validatePremium(session.access_token);
+      }else{
+        resetUser();
+      }
+    });
+
+    return()=>subscription.unsubscribe();
+  },[]);
+  // ────────────────────────────────────────────────────────────────
+
   useEffect(()=>{const t1=setTimeout(()=>setSplashOut(true),1600);const t2=setTimeout(()=>setPhase("app"),1950);return()=>{clearTimeout(t1);clearTimeout(t2);};},[]);
   const openReport=useCallback((t:string)=>setReportTicker(t),[]);
   const closeReport=useCallback(()=>setReportTicker(null),[]);
