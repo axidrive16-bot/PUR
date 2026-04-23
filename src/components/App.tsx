@@ -26,9 +26,8 @@ const STATUS: any = {
   "halal": { color: "#208640", bg: "#EAF3DE", label: "Conforme", icon: "✅" },
   "non-halal": { color: "#A32D2D", bg: "#FCEBEB", label: "Non conforme", icon: "❌" }
 };
-const FREEMIUM = { SCREENINGS: 3 };
-const SUB = { PRICE: 9.99, TRIAL: 7 };
-const SECTOR_COLORS = [T.emerald,"#4A7C3F","#639922","#C9A84C","#B07D2A","#8B6914"];
+const SUB = { PRICE: 9.99, TRIAL: 14 };
+const SECTOR_COLORS = ["#2563EB","#DC2626","#EA580C","#D97706","#7C3AED","#0891B2","#059669","#9333EA"];
 
 // ── Score label ────────────────────────────────────────────────────
 function scoreInfo(score: number) {
@@ -221,6 +220,50 @@ const Spark=memo(({pts,color=T.emerald}:{pts:ChartPoint[];color?:string})=>{
 });
 Spark.displayName="Spark";
 
+// ── Donut/Pie Chart ───────────────────────────────────────────────
+function polarToCart(cx:number,cy:number,r:number,deg:number){const rad=(deg)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+function PieChart({segments}:{segments:{label:string;pct:number;color:string}[]}){
+  const[hov,setHov]=useState<number|null>(null);
+  const R=52,ri=30,cx=70,cy=70;
+  let angle=-90;
+  const paths=segments.filter(s=>s.pct>0).map((s,i)=>{
+    const start=angle;const sweep=(s.pct/100)*360;
+    const sA=polarToCart(cx,cy,R,start),eA=polarToCart(cx,cy,R,start+sweep);
+    const iE=polarToCart(cx,cy,ri,start+sweep),iS=polarToCart(cx,cy,ri,start);
+    const large=sweep>180?1:0;
+    const d=`M${sA.x.toFixed(2)},${sA.y.toFixed(2)} A${R},${R} 0 ${large} 1 ${eA.x.toFixed(2)},${eA.y.toFixed(2)} L${iE.x.toFixed(2)},${iE.y.toFixed(2)} A${ri},${ri} 0 ${large} 0 ${iS.x.toFixed(2)},${iS.y.toFixed(2)} Z`;
+    angle+=sweep;
+    return{d,color:s.color,label:s.label,pct:s.pct,i};
+  });
+  const hSeg=hov!==null?segments[hov]:null;
+  return(
+    <div style={{display:"flex",gap:16,alignItems:"center"}}>
+      <svg width={140} height={140} viewBox="0 0 140 140" style={{flexShrink:0}}>
+        {paths.map(p=>(
+          <path key={p.i} d={p.d} fill={p.color} opacity={hov===null||hov===p.i?1:0.5}
+            onMouseEnter={()=>setHov(p.i)} onMouseLeave={()=>setHov(null)}
+            style={{cursor:"pointer",transition:"opacity .15s"}}/>
+        ))}
+        {hSeg?(
+          <><text x={cx} y={cy-4} textAnchor="middle" fontSize="15" fontWeight="800" fill={T.text} fontFamily="'Cabinet Grotesk',sans-serif">{hSeg.pct.toFixed(0)}%</text>
+          <text x={cx} y={cy+10} textAnchor="middle" fontSize="8" fill={T.textMuted} fontFamily="'Cabinet Grotesk',sans-serif">{hSeg.label.slice(0,10)}</text></>
+        ):(
+          <text x={cx} y={cy+5} textAnchor="middle" fontSize="11" fill={T.textMuted} fontFamily="'Cabinet Grotesk',sans-serif">Secteurs</text>
+        )}
+      </svg>
+      <div style={{flex:1}}>
+        {segments.map((s,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",gap:7,marginBottom:6,cursor:"pointer",opacity:hov===null||hov===i?1:0.55,transition:"opacity .15s"}} onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}>
+            <div style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}}/>
+            <span style={{fontSize:11,color:T.textSub,flex:1}}>{s.label}</span>
+            <span style={{fontSize:11,fontWeight:700,color:T.text}}>{s.pct.toFixed(0)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Ratio Bar ─────────────────────────────────────────────────────
 const RatioBar=memo(({label,value,max,detail}:{label:string;value:number;max:number;detail:string})=>{
   const[open,setOpen]=useState(false);
@@ -302,10 +345,10 @@ function AuthModal({onClose}:{onClose:()=>void}){
       </div>
       {err&&<div style={{background:T.redBg,border:`1px solid ${T.red}30`,borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:13,color:T.red}}>{err}</div>}
       <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Email</label>
-      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="vous@email.com" style={{...BS.input,marginBottom:12}}/>
+      <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="vous@email.com" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:12}}/>
       <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Mot de passe</label>
-      <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...BS.input,marginBottom:mode==="signup"?12:20}}/>
-      {mode==="signup"&&<><label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Confirmer</label><input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...BS.input,marginBottom:20}}/></>}
+      <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:mode==="signup"?12:20}}/>
+      {mode==="signup"&&<><label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Confirmer</label><input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:20}}/></>}
       <button style={{...BS.btnPrimary,opacity:loading?.7:1}} onClick={submit} disabled={loading}>{loading?"Chargement…":mode==="signin"?"Se connecter":"Créer mon compte"}</button>
     </Modal>
   );
@@ -326,11 +369,193 @@ function usePortfolios(){
   const createPf=(name:string)=>{const id="p"+Date.now();setPf(ps=>[...ps,{id,name,holdings:[],createdAt:new Date().toISOString()}]);setActiveId(id);};
   const renamePf=(id:string,name:string)=>setPf(ps=>ps.map(p=>p.id===id?{...p,name}:p));
   const deletePf=(id:string)=>{setPf(ps=>{const next=ps.filter(p=>p.id!==id);if(activeId===id&&next.length)setActiveId(next[0].id);return next;});};
-  const addToActive=(asset:Asset)=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:p.holdings.find(h=>h.ticker===asset.ticker)?p.holdings:[...p.holdings,{...asset,qty:1,paidPrice:asset.price,_id:null}]}:p));
+  const addToActive=(asset:Asset,qty=1)=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:p.holdings.find(h=>h.ticker===asset.ticker)?p.holdings:[...p.holdings,{...asset,qty,paidPrice:asset.price,_id:null}]}:p));
   const removeFromActive=(ticker:string)=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:p.holdings.filter(h=>h.ticker!==ticker)}:p));
+  const updateQty=(ticker:string,delta:number)=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:p.holdings.map(h=>h.ticker===ticker?{...h,qty:Math.max(1,h.qty+delta)}:h)}:p));
   const inActive=(ticker:string)=>active.holdings.some(h=>h.ticker===ticker);
+  const getQty=(ticker:string)=>active.holdings.find(h=>h.ticker===ticker)?.qty??0;
   const metrics=useMemo(()=>computePortfolioMetrics(active.holdings),[active]);
-  return{portfolios,active,activeId,setActiveId,createPf,renamePf,deletePf,addToActive,removeFromActive,inActive,metrics};
+  return{portfolios,active,activeId,setActiveId,createPf,renamePf,deletePf,addToActive,removeFromActive,updateQty,inActive,getQty,metrics};
+}
+
+// ── Fundamentals Block (DCF + multiples + quarterly) ─────────────
+function FundamentalsBlock({asset,ticker,isPremium,onUpgrade}:{asset:any;ticker:string;isPremium:boolean;onUpgrade:()=>void}){
+  const[tab,setTab]=useState<"dcf"|"multiples"|"quarters">("dcf");
+  const[showAll,setShowAll]=useState(false);
+
+  // DCF inputs (editable)
+  const[growthRate,setGrowthRate]=useState(8);
+  const[wacc,setWacc]=useState(10);
+  const[terminalGrowth,setTerminalGrowth]=useState(3);
+
+  // Simulated fundamentals — replaced by API data in production
+  const pe=asset.pe??(asset.price/(asset.eps??10)).toFixed(1);
+  const pb=asset.pb??((asset.price/(asset.bookValue??asset.price*.4)).toFixed(1));
+  const evEbitda=asset.evEbitda??(pe*0.65).toFixed(1);
+  const eps=asset.eps??(asset.price/parseFloat(pe.toString())).toFixed(2);
+  const fcfPerShare=asset.fcfPerShare??(parseFloat(eps.toString())*0.82).toFixed(2);
+  const sectorPe=asset.sectorPe??22;
+  const analystTarget=asset.analystTarget??(asset.price*1.12).toFixed(2);
+  const upside=(((parseFloat(analystTarget.toString())/asset.price)-1)*100).toFixed(1);
+
+  // DCF calculation (Gordon Growth + 5-year DCF approximation)
+  const dcfValue=useMemo(()=>{
+    const fcf=parseFloat(fcfPerShare.toString());
+    let pv=0;
+    for(let y=1;y<=5;y++){pv+=fcf*Math.pow(1+growthRate/100,y)/Math.pow(1+wacc/100,y);}
+    const tv=fcf*Math.pow(1+growthRate/100,5)*(1+terminalGrowth/100)/((wacc/100)-(terminalGrowth/100));
+    const tvPv=tv/Math.pow(1+wacc/100,5);
+    return(pv+tvPv).toFixed(2);
+  },[growthRate,wacc,terminalGrowth,fcfPerShare]);
+  const marginOfSafety=(((parseFloat(dcfValue)-asset.price)/parseFloat(dcfValue))*100).toFixed(1);
+  const dcfUpside=(((parseFloat(dcfValue)/asset.price)-1)*100).toFixed(1);
+  const isUndervalued=parseFloat(dcfValue)>asset.price;
+
+  // Simulated quarterly results
+  const quarters=useMemo(()=>[
+    {q:"T1 2025",rev:`${(asset.price*0.22).toFixed(1)}B`,eps:parseFloat(eps.toString()),epsEst:parseFloat(eps.toString())*0.96,beat:true},
+    {q:"T4 2024",rev:`${(asset.price*0.20).toFixed(1)}B`,eps:parseFloat(eps.toString())*0.95,epsEst:parseFloat(eps.toString())*0.94,beat:true},
+    {q:"T3 2024",rev:`${(asset.price*0.19).toFixed(1)}B`,eps:parseFloat(eps.toString())*0.88,epsEst:parseFloat(eps.toString())*0.91,beat:false},
+    {q:"T2 2024",rev:`${(asset.price*0.18).toFixed(1)}B`,eps:parseFloat(eps.toString())*0.82,epsEst:parseFloat(eps.toString())*0.80,beat:true},
+  ],[asset.price,eps]);
+
+  if(!isPremium){
+    return(
+      <button onClick={onUpgrade} style={{width:"100%",background:T.surface2,border:`1px solid ${T.amber}28`,borderRadius:12,padding:"12px 14px",marginBottom:13,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"inherit"}}>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:T.amber,marginBottom:1}}>Valorisation DCF · Multiples · Résultats</div>
+          <div style={{fontSize:11,color:T.textMuted}}>P/E, PBV, EV/EBITDA, modèle DCF, transcripts · Premium</div>
+        </div>
+        <span style={{fontSize:12,color:T.amber,fontWeight:700}}>Voir →</span>
+      </button>
+    );
+  }
+
+  return(
+    <div style={{background:T.surface2,borderRadius:12,overflow:"hidden",marginBottom:13}}>
+      {/* Tabs */}
+      <div style={{display:"flex",borderBottom:`1px solid ${T.border}`}}>
+        {([["dcf","Valorisation DCF"],["multiples","Multiples"],["quarters","Résultats"]] as const).map(([id,lbl])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{flex:1,height:36,background:tab===id?T.surface:"none",border:"none",borderBottom:tab===id?`2px solid ${T.forest}`:"2px solid transparent",color:tab===id?T.forest:T.textMuted,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{lbl}</button>
+        ))}
+      </div>
+
+      <div style={{padding:14}}>
+        {/* DCF Tab */}
+        {tab==="dcf"&&(
+          <div>
+            <p style={{fontSize:10,color:T.textMuted,marginBottom:10,lineHeight:1.6}}>Estimation basée sur les flux de trésorerie. Ces données sont fournies à titre informatif uniquement et ne constituent pas un conseil en investissement.</p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+              {[
+                {label:"Taux croissance",value:growthRate,set:setGrowthRate,min:0,max:30,unit:"%"},
+                {label:"WACC",value:wacc,set:setWacc,min:4,max:20,unit:"%"},
+                {label:"Croissance term.",value:terminalGrowth,set:setTerminalGrowth,min:0,max:5,unit:"%"},
+              ].map(({label,value,set,min,max,unit})=>(
+                <div key={label}>
+                  <p style={{fontSize:9,color:T.textMuted,marginBottom:4}}>{label}</p>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <input type="range" min={min} max={max} value={value} onChange={e=>set(Number(e.target.value))} style={{flex:1,accentColor:T.forest,height:3}}/>
+                    <span style={{fontSize:11,fontWeight:700,color:T.text,minWidth:26}}>{value}{unit}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Result */}
+            <div style={{background:T.surface,borderRadius:10,padding:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div>
+                  <p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Valeur intrinsèque estimée</p>
+                  <p style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:T.text}}>{dcfValue}$</p>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{background:isUndervalued?T.greenBg:T.redBg,color:isUndervalued?T.green:T.red,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700}}>{isUndervalued?"Sous-évalué":"Sur-évalué"}</div>
+                </div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                <div style={{background:T.surface2,borderRadius:8,padding:10}}>
+                  <p style={{fontSize:9,color:T.textMuted,marginBottom:2}}>Cours actuel</p>
+                  <p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.price}$</p>
+                </div>
+                <div style={{background:isUndervalued?T.greenBg:T.redBg,borderRadius:8,padding:10}}>
+                  <p style={{fontSize:9,color:isUndervalued?T.green:T.red,marginBottom:2}}>Potentiel DCF</p>
+                  <p style={{fontSize:13,fontWeight:700,color:isUndervalued?T.green:T.red}}>{parseFloat(dcfUpside)>=0?"+":""}{dcfUpside}%</p>
+                </div>
+              </div>
+              <div style={{marginTop:8,background:T.surface2,borderRadius:8,padding:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <p style={{fontSize:10,color:T.textMuted}}>Marge de sécurité</p>
+                  <p style={{fontSize:12,fontWeight:700,color:parseFloat(marginOfSafety)>20?T.green:parseFloat(marginOfSafety)>0?T.amber:T.red}}>{marginOfSafety}%</p>
+                </div>
+                <div style={{marginTop:6,background:T.surface,borderRadius:100,height:4,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.max(0,Math.min(100,parseFloat(marginOfSafety)))}%`,background:parseFloat(marginOfSafety)>20?T.green:parseFloat(marginOfSafety)>0?T.amber:T.red,borderRadius:100}}/></div>
+              </div>
+              <p style={{fontSize:9,color:T.textMuted,marginTop:8,lineHeight:1.5}}>Consensus analystes : cible à {analystTarget}$ · Potentiel {parseFloat(upside)>=0?"+":""}{upside}% vs cours actuel</p>
+            </div>
+          </div>
+        )}
+
+        {/* Multiples Tab */}
+        {tab==="multiples"&&(
+          <div>
+            <p style={{fontSize:10,color:T.textMuted,marginBottom:10,lineHeight:1.6}}>Comparaison des multiples de valorisation par rapport au secteur. Données à titre indicatif uniquement.</p>
+            {[
+              {label:"P/E (Price/Earnings)",val:parseFloat(pe.toString()),sector:sectorPe,desc:"Combien les investisseurs paient par unité de bénéfice."},
+              {label:"P/B (Price/Book)",val:parseFloat(pb.toString()),sector:3.2,desc:"Ratio cours/valeur comptable de l'entreprise."},
+              {label:"EV/EBITDA",val:parseFloat(evEbitda.toString()),sector:14,desc:"Valeur d'entreprise relative aux bénéfices opérationnels."},
+            ].map(({label,val,sector,desc})=>{
+              const cheaper=val<sector;
+              return(
+                <div key={label} style={{marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:12,fontWeight:700,color:T.text}}>{label}</span>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <span style={{fontSize:13,fontWeight:800,color:cheaper?T.green:T.red}}>{val.toFixed(1)}x</span>
+                      <span style={{fontSize:10,color:T.textMuted}}>sect. {sector}x</span>
+                    </div>
+                  </div>
+                  {/* Regression bar */}
+                  <div style={{position:"relative",height:6,background:T.surface,borderRadius:100,overflow:"visible",marginBottom:4}}>
+                    <div style={{position:"absolute",top:0,left:0,height:"100%",width:`${Math.min((val/Math.max(val,sector*1.5))*100,100)}%`,background:cheaper?T.green:T.red,borderRadius:100,transition:"width .6s ease"}}/>
+                    <div style={{position:"absolute",top:-2,height:10,width:2,background:T.textMuted,borderRadius:1,left:`${Math.min((sector/Math.max(val,sector*1.5))*100,100)}%`}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between"}}>
+                    <span style={{fontSize:9,color:T.textMuted}}>{desc}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:cheaper?T.green:T.red}}>{cheaper?"Moins cher que le sect.":"Plus cher que le sect."}</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{background:T.surface,borderRadius:10,padding:12,marginTop:4}}>
+              <p style={{fontSize:10,color:T.textMuted,marginBottom:4}}>FCF par action</p>
+              <p style={{fontSize:14,fontWeight:700,color:T.text}}>{fcfPerShare}$ <span style={{fontSize:10,color:T.textMuted,fontWeight:400}}>· EPS {eps}$</span></p>
+            </div>
+          </div>
+        )}
+
+        {/* Quarterly Tab */}
+        {tab==="quarters"&&(
+          <div>
+            <p style={{fontSize:10,color:T.textMuted,marginBottom:10}}>Résultats trimestriels récents. Données à titre indicatif uniquement.</p>
+            {(showAll?quarters:quarters.slice(0,2)).map((q,i)=>(
+              <div key={i} style={{background:T.surface,borderRadius:10,padding:12,marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontSize:12,fontWeight:700,color:T.text}}>{q.q}</span>
+                    <span style={{background:q.beat?T.greenBg:T.redBg,color:q.beat?T.green:T.red,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:100}}>{q.beat?"Supérieur aux attentes":"Inférieur"}</span>
+                  </div>
+                  <span style={{fontSize:11,color:T.textMuted}}>CA {q.rev}</span>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div><p style={{fontSize:9,color:T.textMuted,marginBottom:2}}>BPA réel</p><p style={{fontSize:13,fontWeight:700,color:q.beat?T.green:T.red}}>{q.eps.toFixed(2)}$</p></div>
+                  <div><p style={{fontSize:9,color:T.textMuted,marginBottom:2}}>BPA estimé</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{q.epsEst.toFixed(2)}$</p></div>
+                </div>
+              </div>
+            ))}
+            {quarters.length>2&&<button onClick={()=>setShowAll(v=>!v)} style={{width:"100%",background:"none",border:`1px solid ${T.border}`,borderRadius:9,padding:"8px 0",fontSize:11,color:T.textSub,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{showAll?"Voir moins ▲":"Voir plus ▼"}</button>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── StockCard ─────────────────────────────────────────────────────
@@ -341,6 +566,7 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
   const[period,setPeriod]=useState<ChartPeriod>("1M");
   const[showWhy,setShowWhy]=useState(false);
   const[showUp,setShowUp]=useState(false);
+  const[showAddModal,setShowAddModal]=useState(false);
   const{data,isLoading,error}=useStock(ticker,period);
   const asset=data?.asset;
   const enriched=useMemo(()=>{
@@ -354,6 +580,7 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
   const cfg = STATUS[asset.status] ?? STATUS["conforme"] ?? STATUS.halal;
   const si=scoreInfo(asset.score);
   const isInPf=pfCtx.inActive(ticker);
+  const currentQty=pfCtx.getQty(ticker);
   const isWatched=inWl(ticker);
   const cc=(asset.change??0)>=0?T.green:T.red;
   const currentPts=enriched[period]??[];
@@ -417,15 +644,29 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
         </div>
         {/* Purification */}
         {(asset.divAnnual??0)>0&&<div style={{background:T.goldLight,border:`1px solid ${T.gold}30`,borderRadius:12,padding:14,marginBottom:14}}><p style={{fontSize:12,fontWeight:700,color:T.amber,marginBottom:7}}>Purification des dividendes</p><div style={{display:"flex",gap:16}}><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Dividende/an</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.divAnnual}$</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Part à purifier</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{asset.divHaramPct}%</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Montant</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{calcPurification(asset.divAnnual??0,asset.divHaramPct??0).toFixed(3)}$</p></div></div></div>}
-        {/* CTAs */}
+        {/* Données fondamentales */}
+        <FundamentalsBlock asset={asset} ticker={ticker} isPremium={isPremium} onUpgrade={()=>setShowUp(true)}/>
+
+        {/* Position dans le portefeuille */}
+        {isInPf&&(
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,background:T.greenBg,borderRadius:10,padding:"8px 12px"}}>
+            <span style={{fontSize:12,color:T.green,flex:1,fontWeight:600}}>{currentQty} action{currentQty>1?"s":""} en portefeuille</span>
+            <div style={{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.5)",borderRadius:8,overflow:"hidden"}}>
+              <button onClick={()=>pfCtx.updateQty(ticker,-1)} style={{width:30,height:30,background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.forest,fontFamily:"inherit",fontWeight:700}}>−</button>
+              <span style={{width:28,textAlign:"center",fontSize:13,fontWeight:800,color:T.forest}}>{currentQty}</span>
+              <button onClick={()=>setShowAddModal(true)} style={{width:30,height:30,background:"none",border:"none",cursor:"pointer",fontSize:14,color:T.green,fontFamily:"inherit",fontWeight:700}}>+</button>
+            </div>
+          </div>
+        )}
         <div style={{display:"flex",gap:7}}>
-          <button onClick={()=>{pfCtx.addToActive(asset);toast(isInPf?`${ticker} déjà dans le portefeuille`:`${ticker} ajouté ✓`,isInPf?"info":"success");}} style={{flex:1,height:46,background:isInPf?T.greenBg:T.forest,border:`1px solid ${isInPf?T.green:T.forest}`,borderRadius:12,color:isInPf?T.green:"#E8F0EB",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-            {isInPf?"Déjà dans le portefeuille ✓":"+ Ajouter"}
+          <button onClick={()=>isInPf?setShowAddModal(true):setShowAddModal(true)} style={{flex:1,height:46,background:isInPf?T.greenBg:T.forest,border:`1px solid ${isInPf?T.green:T.forest}`,borderRadius:12,color:isInPf?T.green:"#E8F0EB",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+            {isInPf?"Renforcer la position +":"+ Ajouter au portefeuille"}
           </button>
           <button onClick={()=>{const wasWl=isWatched;wlToggle(asset);if(!wasWl){useGamificationStore.getState().trackWatchlist();}toast(wasWl?`Retiré`:`${ticker} suivi 🔖`);}} style={{width:46,height:46,background:isWatched?T.greenBg:T.surface2,border:`1px solid ${isWatched?T.green:T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
           <button onClick={()=>onReport(ticker)} style={{width:46,height:46,background:T.surface2,border:`1px solid ${T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapport">📋</button>
         </div>
       </div>
+      {showAddModal&&<AddToPortfolioModal asset={asset} pfCtx={pfCtx} onClose={()=>setShowAddModal(false)}/>}
       {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
     </article>
   );
@@ -491,29 +732,34 @@ function MarketInsights({onSearch}:{onSearch:(t:string)=>void}){
 function HomeScreen({setTab,openReport}:{setTab:(t:string)=>void;openReport:(t:string)=>void}){
   const pfCtx=usePortfolios();
   const isPremium=useUserStore(s=>s.isPremium);
-  const screenings=useUserStore(s=>s.screenings);
-  const toast=useToast();
-  const[q,setQ]=useState("");const[ticker,setTicker]=useState<string|null>(null);
-  const[showUp,setShowUp]=useState(false);const[showAuth,setShowAuth]=useState(false);
-  const dq=useDebounce(q,400);const{data:sr}=useSearch(dq);
+  const[showAuth,setShowAuth]=useState(false);
+  const[showUp,setShowUp]=useState(false);
   const m=pfCtx.metrics;
-  // Portefeuille chart data
+  const[homePeriod,setHomePeriod]=useState<"1J"|"1M"|"YTD"|"1A"|"5A">("1M");
   const pfPts=useMemo(()=>{
     const base=m.value||3500;const now=Date.now();
-    return Array.from({length:30},(_,i)=>({t:now-(29-i)*86400000,v:base*(0.93+i/100+(Math.random()-.4)*.02)}));
-  },[m.value]);
+    const cfg:{n:number;span:number;vol:number;tr:number}={
+      "1J":{n:24,span:86400000,vol:.004,tr:.005},
+      "1M":{n:30,span:30*86400000,vol:.012,tr:.04},
+      "YTD":{n:Math.max(7,Math.floor((Date.now()-new Date(new Date().getFullYear(),0,1).getTime())/86400000)),span:Date.now()-new Date(new Date().getFullYear(),0,1).getTime(),vol:.015,tr:.09},
+      "1A":{n:52,span:365*86400000,vol:.018,tr:.15},
+      "5A":{n:60,span:5*365*86400000,vol:.025,tr:.65},
+    }[homePeriod];
+    let v=base*(1-cfg.tr);
+    return Array.from({length:cfg.n},(_,i)=>{v*=(1+(Math.random()-.44)*cfg.vol+cfg.tr/cfg.n);return{t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:parseFloat(v.toFixed(2))};});
+  },[m.value,homePeriod]);
 
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
       {/* Header */}
       <header style={{padding:"52px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <PurLogo size={32}/>
-        <button onClick={()=>isPremium?null:setShowAuth(true)} style={{...BS.iconBtn,background:isPremium?T.forest:T.surface,border:`1px solid ${isPremium?T.forest:T.border}`}}>
-          <span style={{fontSize:15,color:isPremium?"#E8F0EB":T.textSub}}>{isPremium?"⭐":"👤"}</span>
+        <button onClick={()=>!isPremium&&setShowAuth(true)} style={{height:32,padding:"0 12px",background:isPremium?T.forest:T.greenBg,border:`1px solid ${isPremium?T.forest:T.green}30`,borderRadius:100,cursor:isPremium?"default":"pointer",display:"flex",alignItems:"center",gap:5}}>
+          <span style={{fontSize:11,fontWeight:700,color:isPremium?"#E8F0EB":T.green}}>{isPremium?"Premium actif":"Essai gratuit 14j"}</span>
         </button>
       </header>
 
-      {/* Portfolio hero — avec Y-axis visible */}
+      {/* Portfolio hero */}
       <section style={{padding:"0 20px 14px"}}>
         <div style={{background:T.forest,borderRadius:20,padding:"18px 18px 10px 18px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
@@ -528,55 +774,131 @@ function HomeScreen({setTab,openReport}:{setTab:(t:string)=>void;openReport:(t:s
               <div style={{fontSize:9,color:m.conform>=75?"#A5D6A7":"#FFE082",fontWeight:700,marginTop:1}}>{m.conform>=75?"Conforme ✓":"À surveiller"}</div>
             </div>
           </div>
-          {/* Chart avec Y-axis et gridlines */}
-          <div style={{color:"rgba(200,230,201,0.6)"}}>
-            <Chart data={pfPts} color="#6FCF97" height={110} showYAxis={true} label="Valeur du portefeuille"/>
+          {/* Period buttons */}
+          <div style={{display:"flex",gap:4,marginBottom:6}}>
+            {(["1J","1M","YTD","1A","5A"] as const).map(p=>(
+              <button key={p} onClick={()=>setHomePeriod(p)} style={{flex:1,height:24,background:homePeriod===p?"rgba(255,255,255,0.2)":"transparent",border:homePeriod===p?"1px solid rgba(255,255,255,0.25)":"1px solid transparent",borderRadius:6,color:homePeriod===p?"#E8F0EB":"rgba(200,230,201,0.45)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{p}</button>
+            ))}
           </div>
+          <Chart data={pfPts} color="#6FCF97" height={110} showYAxis={true} label="Valeur du portefeuille"/>
         </div>
       </section>
 
-      {/* Quick actions */}
+      {/* Quick actions — no search/analysis here */}
       <section style={{padding:"0 20px 14px",display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <button onClick={()=>setTab("screen")} style={{display:"flex",flexDirection:"column",gap:4,padding:"14px 14px",borderRadius:14,border:`1px solid ${T.green}22`,background:T.greenBg,cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
-          <span style={{fontSize:20}}>🔍</span>
-          <span style={{fontSize:13,fontWeight:700,color:T.text}}>Analyser</span>
-          <span style={{fontSize:11,color:T.textSub}}>{isPremium?"Illimité":`${FREEMIUM.SCREENINGS-screenings} restants`}</span>
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none"><circle cx="10" cy="10" r="6" stroke={T.forest} strokeWidth="2"/><path d="M15 15L19 19" stroke={T.forest} strokeWidth="2" strokeLinecap="round"/><path d="M8 10L9.5 11.5L12.5 8.5" stroke={T.forest} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{fontSize:13,fontWeight:700,color:T.text}}>Analyser une action</span>
+          <span style={{fontSize:11,color:T.textSub}}>Conformité AAOIFI</span>
         </button>
         <button onClick={()=>setTab("portfolio")} style={{display:"flex",flexDirection:"column",gap:4,padding:"14px 14px",borderRadius:14,border:`1px solid ${T.border}`,background:T.surface,cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
-          <span style={{fontSize:20}}>📊</span>
+          <svg width={22} height={22} viewBox="0 0 24 24" fill="none"><rect x="3" y="12" width="4" height="9" rx="1" fill={T.forest}/><rect x="10" y="8" width="4" height="13" rx="1" fill={T.forest} opacity=".75"/><rect x="17" y="4" width="4" height="17" rx="1" fill={T.forest} opacity=".5"/></svg>
           <span style={{fontSize:13,fontWeight:700,color:T.text}}>Portefeuilles</span>
           <span style={{fontSize:11,color:T.textSub}}>{pfCtx.portfolios.length} portefeuille{pfCtx.portfolios.length>1?"s":""}</span>
         </button>
       </section>
 
-      {/* Search bar */}
-      <section style={{padding:"0 20px 6px"}}>
-        <div style={{position:"relative"}}>
-          <div style={{display:"flex",gap:8}}>
-            <input style={BS.input} placeholder="Analyser une action (ex: AAPL)" value={q} onChange={e=>{setQ(e.target.value);if(!e.target.value)setTicker(null);}} onKeyDown={e=>e.key==="Enter"&&sr?.results?.[0]&&setTicker(sr.results[0].ticker)}/>
-            <button style={{width:48,height:50,background:T.forest,border:"none",borderRadius:12,color:"#E8F0EB",fontSize:18,cursor:"pointer",flexShrink:0}} onClick={()=>sr?.results?.[0]&&setTicker(sr.results[0].ticker)}>→</button>
-          </div>
-          {sr?.results?.length>0&&q&&!ticker&&(
-            <div style={{position:"absolute",top:56,left:0,right:56,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:12,zIndex:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}>
-              {sr.results.slice(0,5).map((r:any)=>(
-                <button key={r.ticker} onClick={()=>{setTicker(r.ticker);setQ(r.ticker);}} style={{width:"100%",padding:"11px 15px",display:"flex",justifyContent:"space-between",background:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                  <div><div style={{fontSize:13,fontWeight:700,color:T.text}}>{r.ticker}</div><div style={{fontSize:11,color:T.textSub}}>{r.name}</div></div>
-                  <span style={{fontSize:10,color:T.textMuted,background:T.surface2,padding:"2px 7px",borderRadius:6}}>{r.exchange}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {!isPremium&&<div style={{display:"flex",gap:5,marginTop:7,alignItems:"center"}}>{[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:3,background:i<screenings?T.green:T.surface2}}/>)}<span style={{fontSize:11,color:T.textSub,marginLeft:3}}>{screenings}/{FREEMIUM.SCREENINGS} analyses aujourd'hui</span><button style={{fontSize:11,color:T.green,background:"none",border:"none",cursor:"pointer",marginLeft:"auto",fontFamily:"inherit",fontWeight:700}} onClick={()=>setShowUp(true)}>Illimité →</button></div>}
-        {ticker&&<div style={{marginTop:12}}><StockCard ticker={ticker} onReport={openReport} pfCtx={pfCtx}/></div>}
-      </section>
-
       {/* Market Insights */}
-      <MarketInsights onSearch={(t)=>{setTicker(t);setQ(t);}}/>
+      <MarketInsights onSearch={(t)=>{setTab("screen");}}/>
 
       {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
       {showAuth&&<AuthModal onClose={()=>setShowAuth(false)}/>}
     </div>
+  );
+}
+
+// ── Popular stocks for Screening ─────────────────────────────────
+const POPULAR_STOCKS=[
+  {ticker:"AAPL", name:"Apple",         score:91, change:+1.59, sector:"Tech",      pays:"USA",   div:false, status:"conforme"},
+  {ticker:"MSFT", name:"Microsoft",     score:87, change:+0.83, sector:"Tech",      pays:"USA",   div:true,  status:"conforme"},
+  {ticker:"NOVO", name:"Novo Nordisk",  score:93, change:+2.31, sector:"Santé",     pays:"EU",    div:true,  status:"conforme"},
+  {ticker:"NKE",  name:"Nike",          score:84, change:+1.21, sector:"Conso.",    pays:"USA",   div:true,  status:"conforme"},
+  {ticker:"ADBE", name:"Adobe",         score:89, change:-0.42, sector:"Tech",      pays:"USA",   div:false, status:"conforme"},
+  {ticker:"ISDE", name:"iShares Islamic",score:94,change:+0.62, sector:"ETF",       pays:"Global",div:false, status:"conforme"},
+  {ticker:"AMZN", name:"Amazon",        score:62, change:+0.91, sector:"Tech",      pays:"USA",   div:false, status:"douteux"},
+  {ticker:"MC",   name:"LVMH",          score:71, change:-0.3,  sector:"Luxe",      pays:"EU",    div:true,  status:"douteux"},
+  {ticker:"OR",   name:"L'Oréal",       score:78, change:+0.55, sector:"Conso.",    pays:"EU",    div:true,  status:"conforme"},
+  {ticker:"AIR",  name:"Airbus",        score:80, change:+1.1,  sector:"Industrie", pays:"EU",    div:true,  status:"conforme"},
+  {ticker:"TSLA", name:"Tesla",         score:44, change:-1.2,  sector:"Auto",      pays:"USA",   div:false, status:"douteux"},
+  {ticker:"GOOGL",name:"Alphabet",      score:58, change:+0.7,  sector:"Tech",      pays:"USA",   div:false, status:"douteux"},
+];
+const SCREEN_FILTERS=[
+  {id:"all",      label:"Tous"},
+  {id:"conforme", label:"Conforme"},
+  {id:"douteux",  label:"Proche conforme"},
+  {id:"div",      label:"Dividende"},
+  {id:"usa",      label:"USA"},
+  {id:"eu",       label:"Europe"},
+  {id:"tech",     label:"Tech"},
+  {id:"sante",    label:"Santé"},
+  {id:"conso",    label:"Conso."},
+  {id:"etf",      label:"ETF"},
+] as const;
+
+// ── Add to Portfolio Modal (EUR ↔ shares) ────────────────────────
+function AddToPortfolioModal({asset,pfCtx,onClose}:{asset:any;pfCtx:ReturnType<typeof usePortfolios>;onClose:()=>void}){
+  const[mode,setMode]=useState<"eur"|"shares">("eur");
+  const[eurVal,setEurVal]=useState("100");
+  const[sharesVal,setSharesVal]=useState("");
+  const price=asset.price??1;
+  const parsedEur=parseFloat(eurVal)||0;
+  const parsedShares=parseFloat(sharesVal)||0;
+  const sharesFromEur=(parsedEur/price);
+  const eurFromShares=(parsedShares*price);
+  const finalShares=mode==="eur"?sharesFromEur:parsedShares;
+  const finalEur=mode==="eur"?parsedEur:eurFromShares;
+  const handleAdd=()=>{if(finalShares<=0)return;pfCtx.addToActive(asset,parseFloat(finalShares.toFixed(4)));onClose();};
+  return(
+    <Modal onClose={onClose}>
+      <h2 style={{fontSize:19,fontWeight:800,color:T.text,marginBottom:4}}>Ajouter {asset.ticker}</h2>
+      <p style={{fontSize:12,color:T.textMuted,marginBottom:18}}>Cours actuel : <strong style={{color:T.text}}>{price}$</strong></p>
+      {/* Mode toggle */}
+      <div style={{...BS.segCtrl,marginBottom:18}}>
+        <button onClick={()=>setMode("eur")} style={{...BS.seg,...(mode==="eur"?BS.segActive:{})}}>Montant en €</button>
+        <button onClick={()=>setMode("shares")} style={{...BS.seg,...(mode==="shares"?BS.segActive:{})}}>Nombre d'actions</button>
+      </div>
+      {mode==="eur"&&(
+        <div>
+          <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Montant à investir</label>
+          <div style={{position:"relative",marginBottom:12}}>
+            <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",fontSize:16,color:T.textMuted,fontWeight:700}}>€</span>
+            <input type="number" min="1" value={eurVal} onChange={e=>setEurVal(e.target.value)} style={{...BS.input,paddingLeft:32}} autoFocus/>
+          </div>
+          <div style={{background:T.surface2,borderRadius:10,padding:"12px 14px",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:12,color:T.textSub}}>Nombre d'actions</span>
+              <span style={{fontSize:16,fontWeight:800,color:T.forest}}>{sharesFromEur.toFixed(4)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+              <span style={{fontSize:11,color:T.textMuted}}>Fractions incluses</span>
+              <span style={{fontSize:11,color:T.textMuted}}>≈ {parsedEur.toFixed(2)} €</span>
+            </div>
+          </div>
+          {/* Quick amounts */}
+          <div style={{display:"flex",gap:6,marginBottom:18}}>
+            {[50,100,250,500,1000].map(v=><button key={v} onClick={()=>setEurVal(String(v))} style={{flex:1,height:30,background:parseFloat(eurVal)===v?T.forest:T.surface2,color:parseFloat(eurVal)===v?"#E8F0EB":T.textSub,border:"none",borderRadius:8,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{v}€</button>)}
+          </div>
+        </div>
+      )}
+      {mode==="shares"&&(
+        <div>
+          <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Nombre d'actions</label>
+          <input type="number" min="0.0001" step="0.1" value={sharesVal} onChange={e=>setSharesVal(e.target.value)} placeholder="ex : 2.5" style={{...BS.input,marginBottom:12}} autoFocus/>
+          {parsedShares>0&&(
+            <div style={{background:T.surface2,borderRadius:10,padding:"12px 14px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,color:T.textSub}}>Montant équivalent</span>
+                <span style={{fontSize:16,fontWeight:800,color:T.forest}}>{eurFromShares.toFixed(2)} $</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      <button style={{...BS.btnPrimary,opacity:finalShares>0?1:0.45}} onClick={handleAdd} disabled={finalShares<=0}>
+        Ajouter {finalShares>0?`${finalShares.toFixed(4)} action${finalShares!==1?"s":""}`:""} au portefeuille
+      </button>
+      <button style={{...BS.btnGhost,width:"100%",marginTop:10}} onClick={onClose}>Annuler</button>
+    </Modal>
   );
 }
 
@@ -588,19 +910,39 @@ function ScreeningScreen({openReport}:{openReport:(t:string)=>void}){
   const pfCtx=usePortfolios();
   const[q,setQ]=useState("");const[ticker,setTicker]=useState<string|null>(null);
   const[showUp,setShowUp]=useState(false);
+  const[screenFilter,setScreenFilter]=useState<string>("all");
   const dq=useDebounce(q,300);const{data:sr}=useSearch(dq);
   const gStore=useGamificationStore();
-  const doSearch=(t:string)=>{if(!isPremium&&screenings>=FREEMIUM.SCREENINGS){setShowUp(true);return;}inc();gStore.trackAnalysis();gStore.checkStreak();setTicker(t);setQ(t);};
+  const doSearch=(t:string)=>{inc();gStore.trackAnalysis();gStore.checkStreak();setTicker(t);setQ(t);};
+  const filtered=useMemo(()=>POPULAR_STOCKS.filter(s=>{
+    if(screenFilter==="all")return true;
+    if(screenFilter==="conforme")return s.status==="conforme";
+    if(screenFilter==="douteux")return s.status==="douteux";
+    if(screenFilter==="div")return s.div;
+    if(screenFilter==="usa")return s.pays==="USA";
+    if(screenFilter==="eu")return s.pays==="EU";
+    if(screenFilter==="tech")return s.sector==="Tech";
+    if(screenFilter==="sante")return s.sector==="Santé";
+    if(screenFilter==="conso")return s.sector==="Conso.";
+    if(screenFilter==="etf")return s.sector==="ETF";
+    return true;
+  }),[screenFilter]);
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
-      <header style={BS.pageHeader}><h1 style={BS.pageTitle}>Analyser</h1>{!isPremium&&<div style={{fontSize:11,background:T.amberBg,color:T.amber,padding:"4px 10px",borderRadius:100,fontWeight:700}}>{screenings}/{FREEMIUM.SCREENINGS}</div>}</header>
-      <div style={{padding:"0 20px 14px"}}>
+      <header style={BS.pageHeader}>
+        <div style={{display:"flex",gap:10,alignItems:"center"}}>
+          {ticker&&<button onClick={()=>{setTicker(null);setQ("");}} style={{width:34,height:34,borderRadius:10,background:T.surface,border:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:T.text,fontFamily:"inherit"}}>←</button>}
+          <h1 style={BS.pageTitle}>{ticker?ticker:"Analyser"}</h1>
+        </div>
+        {!isPremium&&!ticker&&<div style={{background:isPremium?T.forest:T.amberBg,borderRadius:10,padding:"4px 10px"}}><span style={{fontSize:11,fontWeight:700,color:isPremium?"#E8F0EB":T.amber}}>Essai 14j</span></div>}
+      </header>
+      {!ticker&&<div style={{padding:"0 20px 14px"}}>
         <div style={{position:"relative"}}>
           <div style={{display:"flex",gap:8}}>
-            <input style={BS.input} placeholder="Ticker ou nom de l'entreprise…" value={q} onChange={e=>{setQ(e.target.value);if(!e.target.value)setTicker(null);}}/>
+            <input style={BS.input} placeholder="Ticker ou nom de l'entreprise…" value={q} onChange={e=>{setQ(e.target.value);}} autoFocus/>
             <button style={{width:48,height:50,background:T.forest,border:"none",borderRadius:12,color:"#E8F0EB",fontSize:18,cursor:"pointer",flexShrink:0}} onClick={()=>sr?.results?.[0]&&doSearch(sr.results[0].ticker)}>→</button>
           </div>
-          {sr?.results?.length>0&&q&&!ticker&&(
+          {sr?.results?.length>0&&q&&(
             <div style={{position:"absolute",top:56,left:0,right:56,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:12,zIndex:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}>
               {sr.results.slice(0,6).map((r:any)=>(
                 <button key={r.ticker} onClick={()=>doSearch(r.ticker)} style={{width:"100%",padding:"11px 15px",display:"flex",justifyContent:"space-between",background:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
@@ -611,13 +953,73 @@ function ScreeningScreen({openReport}:{openReport:(t:string)=>void}){
             </div>
           )}
         </div>
-        <p style={{fontSize:11,color:T.textMuted,marginTop:7}}>Données en temps réel · Financial Modeling Prep</p>
-      </div>
+        <p style={{fontSize:11,color:T.textMuted,marginTop:7}}>Données financières mises à jour en temps réel</p>
+      </div>}
       {ticker&&<div style={{padding:"0 20px 16px"}}><StockCard ticker={ticker} onReport={openReport} pfCtx={pfCtx}/></div>}
+
+      {/* Popular stocks section */}
+      {!ticker&&(
+        <div style={{padding:"8px 20px 24px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <p style={{fontSize:13,fontWeight:700,color:T.text}}>Actions populaires</p>
+            <span style={{fontSize:10,color:T.textMuted}}>Tap pour analyser</span>
+          </div>
+          {/* Filters */}
+          <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14,paddingBottom:2}}>
+            {SCREEN_FILTERS.map(f=>(
+              <button key={f.id} onClick={()=>setScreenFilter(f.id)} style={{flexShrink:0,height:28,padding:"0 11px",background:screenFilter===f.id?T.forest:T.surface2,color:screenFilter===f.id?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{f.label}</button>
+            ))}
+          </div>
+          {/* Grid */}
+          {filtered.length===0?(
+            <div style={{textAlign:"center",padding:"28px 0",color:T.textMuted,background:T.surface,borderRadius:14,border:`1px solid ${T.border}`}}>
+              <p style={{fontSize:12,fontWeight:700,color:T.textSub}}>Aucun résultat</p>
+              <p style={{fontSize:11,marginTop:3}}>Essayez un autre filtre</p>
+            </div>
+          ):(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+              {filtered.map(s=>{
+                const pos=s.change>=0;
+                const si={conforme:{color:T.green,bg:T.greenBg},douteux:{color:T.amber,bg:T.amberBg}}[s.status]??{color:T.red,bg:"#FCEBEB"};
+                return(
+                  <button key={s.ticker} onClick={()=>doSearch(s.ticker)} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:"13px 13px 11px",textAlign:"left",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                      <div>
+                        <div style={{fontSize:14,fontWeight:800,color:T.text,letterSpacing:"-.3px"}}>{s.ticker}</div>
+                        <div style={{fontSize:10,color:T.textMuted,marginTop:1}}>{s.name}</div>
+                      </div>
+                      <div style={{background:pos?T.greenBg:"#FCEBEB",color:pos?T.green:T.red,fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:6}}>{pos?"+":""}{s.change}%</div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px solid ${T.border}`,paddingTop:8}}>
+                      <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                        <span style={{background:si.bg,color:si.color,fontSize:8,fontWeight:700,padding:"2px 6px",borderRadius:100}}>{s.status==="conforme"?"Conforme":"Douteux"}</span>
+                      </div>
+                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                        {s.div&&<span style={{fontSize:9,color:T.amber}}>Div.</span>}
+                        <span style={{fontSize:13,fontWeight:800,color:si.color}}>{s.score}</span>
+                      </div>
+                    </div>
+                    <div style={{marginTop:6,fontSize:9,color:T.textMuted}}>{s.sector} · {s.pays}</div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
     </div>
   );
 }
+
+// ── Benchmark data (simulated overlay) ───────────────────────────
+const BENCHMARKS: Record<string,{label:string;trend:number}>={
+  "sp500":  {label:"S&P 500",  trend:0.18},
+  "cac40":  {label:"CAC 40",   trend:0.09},
+  "msci":   {label:"MSCI World",trend:0.14},
+  "nasdaq": {label:"NASDAQ",   trend:0.24},
+};
 
 // ── Portfolio Screen — Multi-portfolio + Zakat ────────────────────
 function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
@@ -627,11 +1029,48 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
   const[newName,setNewName]=useState("");
   const[editId,setEditId]=useState<string|null>(null);
   const[editName,setEditName]=useState("");
+  const[benchmark,setBenchmark]=useState<string>("sp500");
+  const[showBenchmark,setShowBenchmark]=useState(false);
+  const[pfPeriod,setPfPeriod]=useState<"1J"|"1M"|"YTD"|"1A"|"5A">("1M");
   const m=pfCtx.metrics;
   const pfPts=useMemo(()=>{
     const base=m.value||3500;const now=Date.now();
-    return Array.from({length:30},(_,i)=>({t:now-(29-i)*86400000,v:base*(0.93+i/100+(Math.random()-.4)*.02)}));
-  },[m.value]);
+    const cfg:{n:number;span:number;vol:number;tr:number}={
+      "1J":{n:24,span:86400000,vol:.004,tr:.005},
+      "1M":{n:30,span:30*86400000,vol:.012,tr:.04},
+      "YTD":{n:Math.floor((Date.now()-new Date(new Date().getFullYear(),0,1).getTime())/86400000)||30,span:Date.now()-new Date(new Date().getFullYear(),0,1).getTime(),vol:.015,tr:.09},
+      "1A":{n:52,span:365*86400000,vol:.018,tr:.15},
+      "5A":{n:60,span:5*365*86400000,vol:.025,tr:.65},
+    }[pfPeriod];
+    let v=base*(1-cfg.tr);
+    return Array.from({length:cfg.n},(_,i)=>{v*=(1+(Math.random()-.44)*cfg.vol+cfg.tr/cfg.n);return{t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:parseFloat(v.toFixed(2))};});
+  },[m.value,pfPeriod]);
+  const bmkPts=useMemo(()=>{
+    const bm=BENCHMARKS[benchmark];const base=m.value||3500;const startBase=base*(1-bm.trend*.5);const now=Date.now();
+    return Array.from({length:pfPts.length},(_,i)=>({t:pfPts[i]?.t??now,v:startBase*(1+bm.trend*(i/(pfPts.length-1||1))+(Math.random()-.5)*.015)}));
+  },[m.value,benchmark,pfPts.length]);
+  // TWR approximation: product of daily returns
+  const twr=useMemo(()=>{
+    if(pfPts.length<2)return 0;
+    let product=1;
+    for(let i=1;i<pfPts.length;i++){product*=(pfPts[i].v/pfPts[i-1].v);}
+    return((product-1)*100);
+  },[pfPts]);
+  const bmkTwr=useMemo(()=>{
+    if(bmkPts.length<2)return 0;
+    let product=1;
+    for(let i=1;i<bmkPts.length;i++){product*=(bmkPts[i].v/bmkPts[i-1].v);}
+    return((product-1)*100);
+  },[bmkPts]);
+  // Dividend income from holdings
+  const dividendData=useMemo(()=>{
+    return pfCtx.active.holdings.map(h=>{
+      const annualYield=(h as any).divYield??(Math.random()*3).toFixed(2);
+      const annualIncome=((h.price*h.qty)*(parseFloat(annualYield.toString())/100));
+      return{ticker:h.ticker,yield:parseFloat(annualYield.toString()),annual:annualIncome,monthly:annualIncome/12};
+    }).filter(d=>d.yield>0.1);
+  },[pfCtx.active.holdings]);
+  const totalAnnualDiv=dividendData.reduce((s,d)=>s+d.annual,0);
   // Zakat : 2.5% sur la valeur nette eligible
   const zakatRate=0.025;
   const zakatAmount=(m.value*zakatRate);
@@ -658,7 +1097,7 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
         </div>
       </section>
 
-      {/* Hero chart avec Y-axis */}
+      {/* Hero chart avec Y-axis + comparaison indice */}
       <section style={{padding:"0 20px 14px"}}>
         <div style={{background:T.forest,borderRadius:18,padding:"16px 16px 8px"}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
@@ -674,7 +1113,52 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
               <div style={{fontSize:8,color:"rgba(200,230,201,0.4)",letterSpacing:"0.06em"}}>SCORE</div>
             </div>
           </div>
+          {/* TWR badges */}
+          <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:9,color:"rgba(200,230,201,0.6)"}}>TWR port.</span>
+              <span style={{fontSize:11,fontWeight:700,color:twr>=0?"#A5D6A7":"#EF9A9A"}}>{twr>=0?"+":""}{twr.toFixed(2)}%</span>
+            </div>
+            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:9,color:"rgba(200,230,201,0.4)"}}>{BENCHMARKS[benchmark].label}</span>
+              <span style={{fontSize:11,fontWeight:700,color:bmkTwr>=0?"rgba(200,230,201,0.7)":"#EF9A9A"}}>{bmkTwr>=0?"+":""}{bmkTwr.toFixed(2)}%</span>
+            </div>
+            {/* Benchmark selector */}
+            <div style={{position:"relative",marginLeft:"auto"}}>
+              <button onClick={()=>setShowBenchmark(v=>!v)} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,padding:"4px 10px",color:"rgba(200,230,201,0.8)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{BENCHMARKS[benchmark].label} ▾</button>
+              {showBenchmark&&(
+                <div style={{position:"absolute",right:0,top:30,background:T.surface,border:`1px solid ${T.border}`,borderRadius:10,zIndex:20,minWidth:130,boxShadow:"0 8px 24px rgba(0,0,0,.15)",overflow:"hidden"}}>
+                  {Object.entries(BENCHMARKS).map(([k,v])=>(
+                    <button key={k} onClick={()=>{setBenchmark(k);setShowBenchmark(false);}} style={{width:"100%",padding:"9px 14px",background:benchmark===k?T.greenBg:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontSize:12,color:benchmark===k?T.forest:T.text,fontWeight:benchmark===k?700:400,textAlign:"left",fontFamily:"inherit"}}>{v.label}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Period buttons */}
+          <div style={{display:"flex",gap:4,marginBottom:6}}>
+            {(["1J","1M","YTD","1A","5A"] as const).map(p=>(
+              <button key={p} onClick={()=>setPfPeriod(p)} style={{flex:1,height:24,background:pfPeriod===p?"rgba(255,255,255,0.2)":"transparent",border:pfPeriod===p?"1px solid rgba(255,255,255,0.25)":"1px solid transparent",borderRadius:6,color:pfPeriod===p?"#E8F0EB":"rgba(200,230,201,0.45)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{p}</button>
+            ))}
+          </div>
           <Chart data={pfPts} color="#6FCF97" height={100} showYAxis={true} label="Valeur du portefeuille"/>
+          {/* Benchmark overlay line (simple SVG) */}
+          {(() => {
+            const pts2=bmkPts;const W=340,H=100,PT=8,PB=22,PL=42,PR=8,cW=W-PL-PR,cH=H-PT-PB;
+            const pfVals=pfPts.map(d=>d.v);const b2Vals=pts2.map(d=>d.v);
+            const allVals=[...pfVals,...b2Vals];
+            const mn=Math.min(...allVals),mx=Math.max(...allVals),rng=mx-mn||1;
+            const bmkLine=pts2.map((d,i)=>`${PL+(i/(pts2.length-1||1))*cW},${PT+cH-((d.v-mn)/rng)*cH}`).join(" ");
+            return(
+              <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block",marginTop:-H-16,pointerEvents:"none",opacity:.6}}>
+                <polyline points={bmkLine} fill="none" stroke="#FFD580" strokeWidth="1.5" strokeDasharray="4,3" strokeLinecap="round"/>
+              </svg>
+            );
+          })()}
+          <div style={{display:"flex",gap:14,marginTop:4,paddingLeft:42}}>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:14,height:2,background:"#6FCF97",borderRadius:1}}/><span style={{fontSize:9,color:"rgba(200,230,201,0.5)"}}>Portefeuille</span></div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}><div style={{width:14,height:2,background:"#FFD580",borderRadius:1,backgroundImage:"repeating-linear-gradient(90deg,#FFD580 0,#FFD580 4px,transparent 4px,transparent 7px)"}}/><span style={{fontSize:9,color:"rgba(200,230,201,0.5)"}}>{BENCHMARKS[benchmark].label}</span></div>
+          </div>
         </div>
       </section>
 
@@ -712,22 +1196,57 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
         </div>
       </section>
 
-      {/* Répartition */}
+      {/* Répartition sectorielle — camembert */}
       {sectorSegs.length>0&&(
         <section style={{padding:"0 20px 14px"}}>
           <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,padding:18}}>
-            <p style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Répartition sectorielle</p>
-            {sectorSegs.map(s=>(
-              <div key={s.label} style={{display:"flex",alignItems:"center",gap:10,marginBottom:9}}>
-                <div style={{width:8,height:8,borderRadius:4,background:s.color,flexShrink:0}}/>
-                <span style={{fontSize:12,color:T.textSub,flex:1}}>{s.label}</span>
-                <div style={{width:80,height:4,background:T.surface2,borderRadius:100,overflow:"hidden"}}><div style={{height:"100%",width:`${s.pct}%`,background:s.color,borderRadius:100}}/></div>
-                <span style={{fontSize:12,fontWeight:700,color:T.text,width:30,textAlign:"right"}}>{s.pct.toFixed(0)}%</span>
-              </div>
-            ))}
+            <p style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Allocation sectorielle</p>
+            <PieChart segments={sectorSegs}/>
           </div>
         </section>
       )}
+
+      {/* Dividendes */}
+      <section style={{padding:"0 20px 14px"}}>
+        <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:16,padding:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <p style={{fontSize:13,fontWeight:700,color:T.text}}>Revenus passifs</p>
+            {totalAnnualDiv>0&&<span style={{background:T.goldLight,color:T.amber,fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:100}}>{totalAnnualDiv.toFixed(0)}€/an</span>}
+          </div>
+          {dividendData.length===0?(
+            <div style={{textAlign:"center",padding:"16px 0"}}>
+              <p style={{fontSize:12,color:T.textMuted}}>Aucun dividende dans ce portefeuille</p>
+              <p style={{fontSize:11,color:T.textMuted,marginTop:3}}>Ajoutez des actions versant des dividendes pour suivre vos revenus passifs</p>
+            </div>
+          ):(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:14}}>
+                <div style={{background:T.goldLight,borderRadius:10,padding:12}}>
+                  <p style={{fontSize:9,color:T.amber,marginBottom:3}}>Revenus annuels estimés</p>
+                  <p style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:T.text}}>{totalAnnualDiv.toFixed(0)}€</p>
+                </div>
+                <div style={{background:T.surface2,borderRadius:10,padding:12}}>
+                  <p style={{fontSize:9,color:T.textMuted,marginBottom:3}}>Mensuel estimé</p>
+                  <p style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:T.text}}>{(totalAnnualDiv/12).toFixed(0)}€</p>
+                </div>
+              </div>
+              {dividendData.map(d=>(
+                <div key={d.ticker} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderTop:`1px solid ${T.border}`}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <div style={{width:30,height:30,borderRadius:8,background:T.surface2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:800,color:T.textSub}}>{d.ticker.slice(0,2)}</div>
+                    <div><p style={{fontSize:12,fontWeight:700,color:T.text}}>{d.ticker}</p><p style={{fontSize:10,color:T.textMuted}}>Rendement {d.yield.toFixed(2)}%</p></div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <p style={{fontSize:12,fontWeight:700,color:T.amber}}>{d.annual.toFixed(0)}€/an</p>
+                    <p style={{fontSize:10,color:T.textMuted}}>{d.monthly.toFixed(0)}€/mois</p>
+                  </div>
+                </div>
+              ))}
+              <p style={{fontSize:9,color:T.textMuted,marginTop:10,lineHeight:1.5}}>Ces projections sont basées sur le rendement actuel et ne garantissent pas les revenus futurs. Les dividendes peuvent être modifiés ou supprimés par l'entreprise.</p>
+            </>
+          )}
+        </div>
+      </section>
 
       {/* Positions */}
       <section style={{padding:"0 20px 24px"}}>
@@ -762,7 +1281,14 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
                   <span style={{background:si.bg,color:si.color,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:100}}>{si.label}</span>
                   <span style={{fontSize:10,color:T.textMuted}}>Score {h.score}</span>
                 </div>
-                <button style={{...BS.microBtn,color:T.red,borderColor:`${T.red}22`,fontSize:10}} onClick={()=>{pfCtx.removeFromActive(h.ticker);toast(`${h.ticker} retiré`,"info");}}>Retirer</button>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <div style={{display:"flex",alignItems:"center",background:T.surface2,borderRadius:7,overflow:"hidden"}}>
+                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:"inherit",fontWeight:700}} onClick={()=>{pfCtx.updateQty(h.ticker,-1);toast(`${h.ticker} : ${Math.max(1,h.qty-1)} action${h.qty-1>1?"s":""}`);}}>−</button>
+                    <span style={{fontSize:11,fontWeight:800,color:T.text,padding:"0 2px"}}>{h.qty}</span>
+                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.green,fontFamily:"inherit",fontWeight:700}} onClick={()=>{pfCtx.updateQty(h.ticker,1);toast(`${h.ticker} renforcé ✓`);}}>+</button>
+                  </div>
+                  <button style={{...BS.microBtn,color:T.red,borderColor:`${T.red}22`,fontSize:10}} onClick={()=>{pfCtx.removeFromActive(h.ticker);toast(`${h.ticker} retiré`,"info");}}>Retirer</button>
+                </div>
               </div>
             </article>
           );
@@ -828,27 +1354,65 @@ function WatchlistScreen(){
   );
 }
 
+// ── Profile FAQ data ─────────────────────────────────────────────
+const PROFILE_FAQ=[
+  {q:"C'est quoi PUR ?",a:"PUR est une application qui analyse les bilans financiers des entreprises cotées et calcule un score de conformité basé sur 3 ratios objectifs : endettement, revenus, et liquidités. L'objectif est de vous donner les informations nécessaires pour investir selon vos valeurs."},
+  {q:"Qu'est-ce que le score de conformité ?",a:"Le score va de 0 à 100.\n\n✓ Score ≥ 75 : Conforme\n! Score 40–74 : À surveiller\n✕ Score < 40 : Non conforme\n\nCe score est recalculé à chaque publication de résultats trimestriels."},
+  {q:"Quels sont les critères AAOIFI ?",a:"PUR analyse 3 ratios :\n• Dette ≤ 33 % des actifs totaux\n• Revenus sensibles ≤ 5 % du CA (intérêts, alcool, jeux…)\n• Liquidités ≤ 33 % des actifs\n\nPlus le score est élevé, plus l'entreprise respecte ces critères."},
+  {q:"C'est quoi la purification des dividendes ?",a:"Si une entreprise conforme a malgré tout une petite part de revenus sensibles (ex. 2 %), PUR calcule que 2 % de vos dividendes reçus doivent être donnés en charité. C'est la purification."},
+  {q:"C'est quoi la Zakat ?",a:"La Zakat est un prélèvement annuel de 2,5 % sur les actifs éligibles au-delà d'un certain seuil. PUR estime le montant selon la valeur de votre portefeuille. Consultez un érudit qualifié pour une décision précise."},
+  {q:"Que faire si mon action devient non conforme ?",a:"Si une action passe sous le seuil, PUR vous alerte dans la Watchlist. Vous décidez ensuite de conserver, réduire ou vendre. PUR ne donne aucun conseil d'investissement : chaque décision vous appartient entièrement."},
+  {q:"PUR donne-t-il des conseils financiers ?",a:"Non. PUR est strictement un outil d'information et d'analyse. Les scores ne constituent en aucun cas des conseils en investissement. Consultez un conseiller financier agréé pour des conseils adaptés à votre situation."},
+  {q:"Comment fonctionne l'abonnement ?",a:"PUR propose un essai gratuit de 14 jours sans carte bancaire requise. À l'issue de l'essai, un abonnement mensuel de 9,99 €/mois est requis pour continuer à utiliser toutes les fonctionnalités. Résiliable à tout moment."},
+];
+
 // ── Profile Screen ────────────────────────────────────────────────
-function ProfileScreen(){
+function ProfileScreen({setTab}:{setTab:(t:string)=>void}){
   const{isPremium,screenings,setIsPremium}=useUserStore();
   const toast=useToast();
   const[showUp,setShowUp]=useState(false);const[showAuth,setShowAuth]=useState(false);
+  const[openFaq,setOpenFaq]=useState<number|null>(null);
+  const trialDaysLeft=14;
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
       <div style={{padding:"52px 20px 24px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}><PurLogo size={34}/>{isPremium&&<span style={{background:T.greenBg,color:T.green,fontSize:11,fontWeight:700,padding:"4px 12px",borderRadius:100}}>Premium actif</span>}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <PurLogo size={34}/>
+          <div style={{background:isPremium?T.forest:T.amberBg,borderRadius:12,padding:"6px 12px",textAlign:"center"}}>
+            <p style={{fontSize:11,fontWeight:700,color:isPremium?"#E8F0EB":T.amber,lineHeight:1.2}}>{isPremium?"Premium actif":"Essai gratuit"}</p>
+            {!isPremium&&<p style={{fontSize:9,color:T.amber,marginTop:1}}>{trialDaysLeft} jours restants</p>}
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
           <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:16}}><p style={{fontSize:10,color:T.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Analyses</p><p style={{fontSize:22,fontWeight:800,color:T.text}}>{screenings}</p></div>
-          <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:16}}><p style={{fontSize:10,color:T.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Statut</p><p style={{fontSize:13,fontWeight:700,color:isPremium?T.green:T.amber}}>{isPremium?"Premium ✓":"Gratuit"}</p></div>
+          <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:16}}><p style={{fontSize:10,color:T.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.06em"}}>Statut</p><p style={{fontSize:13,fontWeight:700,color:isPremium?T.green:T.amber}}>{isPremium?"Premium ✓":"Essai gratuit"}</p></div>
         </div>
         {!isPremium&&<button onClick={()=>setShowUp(true)} style={{width:"100%",background:T.forest,borderRadius:16,padding:20,marginBottom:16,cursor:"pointer",textAlign:"left",fontFamily:"inherit",border:"none"}}>
           <p style={{fontSize:16,fontWeight:800,color:"#E8F0EB",marginBottom:5}}>Passer à Premium</p>
           <p style={{fontSize:12,color:"rgba(200,230,201,0.6)",marginBottom:14,lineHeight:1.6}}>Analyses illimitées · Bilans complets · Calcul Zakat automatique</p>
-          <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:12}}><span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"#E8F0EB"}}>{SUB.PRICE}€</span><span style={{fontSize:12,color:"rgba(200,230,201,0.5)"}}>/ mois · {SUB.TRIAL} jours gratuits</span></div>
-          <div style={{background:"#E8F0EB",borderRadius:10,padding:"10px",textAlign:"center",fontSize:13,fontWeight:700,color:T.forest}}>Commencer gratuitement</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:12}}><span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"#E8F0EB"}}>{SUB.PRICE}€</span><span style={{fontSize:12,color:"rgba(200,230,201,0.5)"}}>/ mois après {SUB.TRIAL} jours d'essai</span></div>
+          <div style={{background:"#E8F0EB",borderRadius:10,padding:"10px",textAlign:"center",fontSize:13,fontWeight:700,color:T.forest}}>Commencer l'essai gratuit</div>
         </button>}
         <button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:15,marginBottom:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🔐</span><span style={{fontSize:13,color:T.text}}>Se connecter / Créer un compte</span></div><span style={{color:T.textMuted}}>›</span></button>
-        {[{icon:"📊",label:"Mes portefeuilles"},{icon:"🧮",label:"Calcul Zakat"},{icon:"💬",label:"Support"}].map(item=><button key={item.label} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",borderTop:"none",borderLeft:"none",borderRight:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>{item.icon}</span><span style={{fontSize:13,color:T.text}}>{item.label}</span></div><span style={{color:T.textMuted}}>›</span></button>)}
+        <button onClick={()=>setTab("portfolio")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>📊</span><span style={{fontSize:13,color:T.text}}>Mes portefeuilles</span></div><span style={{color:T.textMuted}}>›</span></button>
+        <button onClick={()=>setTab("portfolio")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🧮</span><span style={{fontSize:13,color:T.text}}>Calcul Zakat</span></div><span style={{color:T.textMuted}}>›</span></button>
+        <button onClick={()=>toast("Support disponible à support@pur.app","info")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>💬</span><span style={{fontSize:13,color:T.text}}>Support</span></div><span style={{color:T.textMuted}}>›</span></button>
+
+        {/* FAQ */}
+        <p style={{fontSize:13,fontWeight:700,color:T.text,marginTop:24,marginBottom:12}}>Questions fréquentes</p>
+        {PROFILE_FAQ.map((item,i)=>(
+          <div key={i} style={{background:T.surface,border:`1px solid ${openFaq===i?T.emerald+"40":T.border}`,borderRadius:13,marginBottom:8,overflow:"hidden"}}>
+            <button onClick={()=>setOpenFaq(openFaq===i?null:i)} style={{width:"100%",padding:"13px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text,paddingRight:12,flex:1}}>{item.q}</span>
+              <span style={{fontSize:11,color:T.textMuted,flexShrink:0}}>{openFaq===i?"▲":"▼"}</span>
+            </button>
+            {openFaq===i&&<div style={{padding:"0 16px 16px"}}>
+              <div style={{height:1,background:T.border,marginBottom:12}}/>
+              <p style={{fontSize:13,color:T.textSub,lineHeight:1.75,whiteSpace:"pre-line"}}>{item.a}</p>
+            </div>}
+          </div>
+        ))}
+
         {isPremium&&<button style={{...BS.btnGhost,width:"100%",marginTop:18,color:T.red,borderColor:`${T.red}20`}} onClick={()=>{setIsPremium(false);toast("Abonnement annulé","info");}}>Annuler l'abonnement</button>}
       </div>
       {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
@@ -971,7 +1535,7 @@ export default function App(){
               {tab==="portfolio" &&<PortfolioScreen setTab={setTab}/>}
               {tab==="watchlist" &&<WatchlistScreen/>}
               {tab==="learn"      &&<LearnScreen/>}
-              {tab==="profile"   &&<ProfileScreen/>}
+              {tab==="profile"   &&<ProfileScreen setTab={setTab}/>}
 
               <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",padding:"8px 0 24px",zIndex:100}}>
                 {TABS.map(t=>(

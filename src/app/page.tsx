@@ -1,2 +1,2 @@
-import App from "@/components/App";
-export default function Home() { return <App />; }
+import LandingPage from "@/components/LandingPage";
+export default function Home() { return <LandingPage />; }

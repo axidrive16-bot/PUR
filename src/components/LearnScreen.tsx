@@ -38,6 +38,25 @@ const QUIZZES=[
   {q:"Que signifie un score de volatilité 'Élevée' ?",choices:["L'action est non conforme","L'action varie beaucoup en prix","L'entreprise est très endettée","Les dividendes sont élevés"],correct:1,xp:20},
 ];
 
+const GLOSSARY=[
+  {term:"FCF",full:"Free Cash Flow",cat:"Fondamentaux",def:"Flux de trésorerie libre : ce qui reste à l'entreprise après avoir payé ses dépenses d'exploitation et ses investissements. Représente l'argent réellement disponible pour rembourser les dettes, verser des dividendes ou racheter des actions. Un FCF positif et croissant est un très bon signe."},
+  {term:"BPA / EPS",full:"Bénéfice Par Action",cat:"Fondamentaux",def:"Le BPA (ou EPS en anglais) mesure la part des bénéfices qui revient à chaque action. Calculé en divisant le bénéfice net total par le nombre d'actions. Un BPA en hausse d'une année sur l'autre est généralement positif pour le cours de l'action."},
+  {term:"P/E",full:"Price-to-Earnings",cat:"Valorisation",def:"Rapport cours/bénéfice. Si une action vaut 100€ et que l'entreprise gagne 5€ par action, le P/E est de 20. Plus il est élevé, plus les investisseurs paient cher pour chaque euro de bénéfice. Un P/E élevé peut signifier qu'on anticipe une forte croissance, ou que l'action est surévaluée."},
+  {term:"P/B",full:"Price-to-Book",cat:"Valorisation",def:"Rapport cours/valeur comptable. Compare le prix de l'action à la valeur des actifs nets de l'entreprise. Un P/B inférieur à 1 signifie qu'on achète l'entreprise sous sa valeur d'actif, ce qui peut être une opportunité."},
+  {term:"EV/EBITDA",full:"Enterprise Value / EBITDA",cat:"Valorisation",def:"Multiple qui compare la valeur totale d'une entreprise (dette incluse) à ses bénéfices avant intérêts, impôts, amortissements. Permet de comparer des entreprises avec des structures de capital différentes. Plus bas = potentiellement moins cher que les concurrents."},
+  {term:"DCF",full:"Discounted Cash Flow",cat:"Valorisation",def:"Méthode d'évaluation qui calcule la valeur actuelle de tous les flux de trésorerie futurs attendus. En résumé : combien vaut aujourd'hui l'argent que l'entreprise va générer dans les prochaines années ? Si la valeur DCF est supérieure au cours actuel, l'action peut être sous-évaluée."},
+  {term:"WACC",full:"Weighted Average Cost of Capital",cat:"Valorisation",def:"Coût moyen pondéré du capital. Taux qui représente ce que coûte le financement de l'entreprise (dette + capitaux propres). Utilisé comme taux d'actualisation dans le modèle DCF. Un WACC de 10% signifie qu'on actualise les flux futurs à 10% par an."},
+  {term:"Marge de sécurité",full:"Margin of Safety",cat:"Valorisation",def:"Différence entre la valeur intrinsèque estimée d'une action et son cours actuel. Popularisé par Benjamin Graham. Une marge de sécurité de 30% signifie qu'on paie 30% moins cher que ce que l'entreprise vaut selon notre modèle — une protection contre nos propres erreurs d'estimation."},
+  {term:"TWR",full:"Time-Weighted Return",cat:"Performance",def:"Rendement pondéré dans le temps. Mesure la performance réelle d'un portefeuille en neutralisant l'impact des dépôts et retraits. C'est la meilleure façon de comparer la performance d'un gestionnaire ou d'une stratégie, indépendamment des mouvements de liquidités."},
+  {term:"EBITDA",full:"Earnings Before Interest, Taxes, Depreciation & Amortization",cat:"Fondamentaux",def:"Résultat opérationnel avant intérêts, impôts, dépréciation et amortissement. Donne une vision de la rentabilité opérationnelle brute d'une entreprise, sans tenir compte de sa structure de financement ou de ses choix comptables d'amortissement."},
+  {term:"ROE",full:"Return on Equity",cat:"Fondamentaux",def:"Rendement des capitaux propres. Mesure l'efficacité d'une entreprise à générer des bénéfices avec les fonds de ses actionnaires. Un ROE de 20% signifie que pour 100€ investis par les actionnaires, l'entreprise génère 20€ de profit. Warren Buffett apprécie les entreprises avec un ROE stable et élevé."},
+  {term:"Bêta (β)",full:"Mesure de volatilité relative",cat:"Risque",def:"Mesure la volatilité d'une action par rapport au marché global. Un bêta de 1 signifie que l'action suit le marché. Un bêta de 1.5 : l'action monte de 15% si le marché monte de 10%, mais chute de 15% si le marché baisse de 10%. Bêta < 1 : action moins volatile que le marché."},
+  {term:"Div. Yield",full:"Rendement en dividende",cat:"Revenus",def:"Dividende annuel divisé par le cours de l'action, exprimé en %. Une action à 100€ versant 2€ de dividende a un rendement de 2%. Un rendement élevé peut être attractif, mais attention : il peut aussi signaler une action sous pression ou un dividende non durable."},
+  {term:"Capitalisation",full:"Capitalisation boursière",cat:"Fondamentaux",def:"Valeur totale d'une entreprise en bourse = nombre d'actions × cours. Large cap (>10Md€), Mid cap (1-10Md€), Small cap (<1Md€). Les grandes capitalisations sont généralement plus stables ; les petites peuvent croître plus vite mais aussi baisser plus fort."},
+  {term:"Purification",full:"Calcul de purification",cat:"AAOIFI",def:"Processus par lequel un investisseur donne en charité la part de ses dividendes provenant de revenus non conformes. Si 3% des revenus d'une entreprise viennent d'intérêts, 3% de vos dividendes reçus doivent être donnés. PUR calcule ce montant automatiquement."},
+  {term:"Zakat",full:"Prélèvement annuel 2.5%",cat:"AAOIFI",def:"Obligation islamique de donner 2.5% de ses actifs éligibles dépassant le nisab (seuil minimal) après un an de détention. Pour les actions, la méthode simplifiée consiste à appliquer 2.5% à la valeur totale du portefeuille conforme. Consultez un érudit pour une décision précise à votre situation."},
+];
+
 const LEARN_CARDS=[
   {icon:"🏦",title:"Comment lire un bilan",cat:"Finance",content:"Un bilan financier montre ce qu'une entreprise possède (actifs) et ce qu'elle doit (passifs). Les actifs incluent bâtiments, équipements, brevets et liquidités. Les passifs incluent les dettes bancaires. La différence constitue les capitaux propres — c'est la richesse nette de l'entreprise."},
   {icon:"📈",title:"Actions vs Obligations",cat:"Finance",content:"Une action = part de propriété d'une entreprise. Une obligation = prêt à une entreprise qui verse des intérêts. Les obligations conventionnelles sont basées sur l'intérêt et ne correspondent généralement pas aux critères de conformité. Les actions d'entreprises conformes sont la voie recommandée."},
@@ -49,15 +68,19 @@ const LEARN_CARDS=[
 
 export default function LearnScreen(){
   const gStore=useGamificationStore();
-  const{xp,streak,badges,missions,notifications}=gStore;
+  const{xp,streak,badges,missions}=gStore;
+  const notifications:Array<{id:number;msg:string;read:boolean}>=Array.isArray(gStore.notifications)?gStore.notifications:[];
   const lvlInfo=computeLevel(xp);
-  const[tab,setTab]=useState<"home"|"faq"|"quiz"|"learn"|"badges"|"sim">("home");
-  const[openFaq,setOpenFaq]=useState<number|null>(null);
+  const[tab,setTab]=useState<"home"|"quiz"|"learn"|"glossary"|"badges"|"sim">("home");
+  const[glossaryQ,setGlossaryQ]=useState("");
+  const[glossaryCat,setGlossaryCat]=useState("Tous");
   const[quizIdx,setQuizIdx]=useState(0);
   const[quizAns,setQuizAns]=useState<number|null>(null);
   const[quizDone,setQuizDone]=useState(false);
   const[readCards,setReadCards]=useState<Set<number>>(new Set());
-  const unread=notifications.filter(n=>!n.read).length;
+  const[mounted,setMounted]=useState(false);
+  useEffect(()=>setMounted(true),[]);
+  const unread=mounted?notifications.filter(n=>n&&!n.read).length:0;
 
   useEffect(()=>{gStore.resetMissionsIfNewWeek();gStore.checkStreak();},[]);
 
@@ -114,9 +137,9 @@ export default function LearnScreen(){
       {/* Tabs */}
       <div style={{padding:"0 20px 14px",display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
         {tabBtn("home","🏠 Vue d'ensemble")}
-        {tabBtn("faq","❓ FAQ")}
         {tabBtn("quiz","🧠 Quiz")}
         {tabBtn("learn","📚 Fiches")}
+        {tabBtn("glossary","📖 Glossaire")}
         {tabBtn("badges","🏆 Badges")}
         {tabBtn("sim","🎮 Simulation")}
       </div>
@@ -149,35 +172,16 @@ export default function LearnScreen(){
           ))}
           {badges.length===0&&<p style={{fontSize:12,color:T.textMuted,fontStyle:"italic"}}>Aucun badge encore — commencez à explorer !</p>}
         </div>
-        {notifications.length>0&&<>
+        {mounted&&notifications.length>0&&<>
           <p style={{fontSize:13,fontWeight:700,color:T.text,marginTop:18,marginBottom:10}}>Activité récente</p>
-          {notifications.slice().reverse().slice(0,6).map(n=>(
-            <div key={n.id} onClick={()=>gStore.readNotif(n.id)} style={{background:n.read?T.surface:T.greenBg,border:`1px solid ${n.read?T.border:T.emerald+"30"}`,borderRadius:10,padding:"10px 13px",marginBottom:7,cursor:"pointer"}}>
-              <span style={{fontSize:12,color:n.read?T.textSub:T.emerald,fontWeight:n.read?400:600}}>{n.msg}</span>
+          {notifications.slice().reverse().slice(0,6).filter(n=>n&&n.id!=null).map((n,i)=>(
+            <div key={String(n.id??i)} onClick={()=>gStore.readNotif(n.id)} style={{background:n.read?T.surface:T.greenBg,border:`1px solid ${n.read?T.border:"rgba(32,134,64,0.19)"}`,borderRadius:10,padding:"10px 13px",marginBottom:7,cursor:"pointer"}}>
+              <span style={{fontSize:12,color:n.read?T.textSub:T.emerald,fontWeight:n.read?400:600}}>{String(n.msg??"")}</span>
             </div>
           ))}
         </>}
       </div>}
 
-      {/* ── FAQ ── */}
-      {tab==="faq"&&<div style={{padding:"0 20px"}}>
-        <p style={{fontSize:12,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>Consultez une fiche pour gagner +10 XP.</p>
-        {FAQ.map((item,i)=>(
-          <div key={i} style={{background:T.surface,border:`1px solid ${openFaq===i?T.emerald+"40":T.border}`,borderRadius:13,marginBottom:8,overflow:"hidden"}}>
-            <button onClick={()=>{setOpenFaq(openFaq===i?null:i);if(openFaq!==i)gStore.trackLearn();}} style={{width:"100%",padding:"14px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-              <span style={{fontSize:13,fontWeight:700,color:T.text,paddingRight:12,flex:1}}>{item.q}</span>
-              <span style={{fontSize:11,color:T.textMuted,flexShrink:0}}>{openFaq===i?"▲":"▼"}</span>
-            </button>
-            {openFaq===i&&<div style={{padding:"0 16px 16px"}}>
-              <div style={{height:1,background:T.border,marginBottom:12}}/>
-              <p style={{fontSize:13,color:T.textSub,lineHeight:1.75,whiteSpace:"pre-line"}}>{item.a}</p>
-              <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:5,background:T.greenBg,borderRadius:8,padding:"3px 9px"}}>
-                <span style={{fontSize:10,color:T.emerald,fontWeight:700}}>+10 XP gagné ✓</span>
-              </div>
-            </div>}
-          </div>
-        ))}
-      </div>}
 
       {/* ── Quiz ── */}
       {tab==="quiz"&&<div style={{padding:"0 20px"}}>
@@ -256,6 +260,46 @@ export default function LearnScreen(){
             </div>
           );
         })}
+      </div>}
+
+      {/* ── Glossaire ── */}
+      {tab==="glossary"&&<div style={{padding:"0 20px"}}>
+        <p style={{fontSize:12,color:T.textMuted,marginBottom:12}}>Toutes les abréviations et termes financiers expliqués simplement.</p>
+        {/* Search */}
+        <div style={{marginBottom:10}}>
+          <input
+            value={glossaryQ} onChange={e=>setGlossaryQ(e.target.value)}
+            placeholder="Chercher un terme (FCF, BPA, DCF…)"
+            style={{width:"100%",height:42,border:`1.5px solid ${T.border}`,borderRadius:11,padding:"0 14px",fontSize:13,outline:"none",background:T.surface,color:T.text,fontFamily:"inherit",boxSizing:"border-box"}}
+          />
+        </div>
+        {/* Category filter */}
+        <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:14,paddingBottom:2}}>
+          {["Tous","Fondamentaux","Valorisation","Performance","Risque","Revenus","AAOIFI"].map(c=>(
+            <button key={c} onClick={()=>setGlossaryCat(c)} style={{flexShrink:0,height:26,padding:"0 10px",background:glossaryCat===c?T.forest:T.surface2,color:glossaryCat===c?"#E8F0EB":T.textSub,border:"none",borderRadius:100,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>{c}</button>
+          ))}
+        </div>
+        {/* Entries */}
+        {(() => {
+          const entries=GLOSSARY.filter(g=>{
+            const matchCat=glossaryCat==="Tous"||g.cat===glossaryCat;
+            const matchQ=!glossaryQ||g.term.toLowerCase().includes(glossaryQ.toLowerCase())||g.full.toLowerCase().includes(glossaryQ.toLowerCase());
+            return matchCat&&matchQ;
+          });
+          if(entries.length===0)return <p style={{fontSize:12,color:T.textMuted,textAlign:"center",padding:"24px 0"}}>Aucun terme trouvé</p>;
+          return entries.map((g,i)=>(
+            <div key={i} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:16,marginBottom:9}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                <div>
+                  <span style={{fontSize:15,fontWeight:800,color:T.text,letterSpacing:"-.3px"}}>{g.term}</span>
+                  <p style={{fontSize:11,color:T.emerald,fontWeight:600,marginTop:2}}>{g.full}</p>
+                </div>
+                <span style={{flexShrink:0,background:T.surface2,color:T.textMuted,fontSize:9,fontWeight:700,padding:"3px 8px",borderRadius:100,marginLeft:8}}>{g.cat}</span>
+              </div>
+              <p style={{fontSize:12,color:T.textSub,lineHeight:1.75}}>{g.def}</p>
+            </div>
+          ));
+        })()}
       </div>}
 
       {/* ── Badges ── */}
