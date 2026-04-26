@@ -39,10 +39,11 @@ export function useAuth() {
   }, [storeSetUser, setItems]);
 
   useEffect(() => {
-    // Session initiale
+    // Session initiale — reset si aucun utilisateur (localStorage peut être périmé)
     auth.getUser().then(async u => {
       setUser(u);
       if (u) await syncUserData(u);
+      else { storeReset(); clearWatchlist(); }
       setLoading(false);
     });
 

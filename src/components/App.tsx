@@ -1441,7 +1441,7 @@ const PROFILE_FAQ=[
 ];
 
 // ── Profile Screen ────────────────────────────────────────────────
-function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>Promise<void>}){
+function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>void}){
   const{isPremium,screenings,setIsPremium,email,id}=useUserStore();
   const isGuest=id==="guest";
   const toast=useToast();
@@ -1568,12 +1568,14 @@ export default function App(){
 
   // ── Auth + premium init ──────────────────────────────────────────
   useAuth(); // activates onAuthStateChange listener
-  const handleSignOut = useCallback(async () => {
-    try { await auth.signOut(); } catch(e) { console.error("[signOut]", e); }
+  const handleSignOut = useCallback(() => {
+    // Reset local state FIRST — pas d'await réseau pour ne pas bloquer l'UI
     useUserStore.getState().reset();
     useWatchlistStore.getState().clear();
     pfCtx.syncFromDB([]);
     setTab("home");
+    // Invalide la session Supabase en arrière-plan
+    auth.signOut().catch(e => console.error("[signOut]", e));
   }, [pfCtx]);
   const userId = useUserStore(s => s.id);
   const setIsPremium = useUserStore(s => s.setIsPremium);
