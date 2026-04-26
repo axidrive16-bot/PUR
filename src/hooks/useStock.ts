@@ -1,6 +1,6 @@
 "use client";
 import useSWR from "swr";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useUserStore } from "@/store/usePortfolioStore";
 import type { StockApiResponse, ChartPeriod } from "@/domain/types";
 
@@ -23,6 +23,15 @@ export function useSearch(query: string) {
     fetcher,
     { revalidateOnFocus:false, dedupingInterval:30_000 }
   );
+}
+
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const h = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(h);
+  }, [value, delay]);
+  return debounced;
 }
 
 export function useSyncPremium() {

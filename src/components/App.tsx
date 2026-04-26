@@ -2,12 +2,15 @@
 import { useGamificationStore } from "@/store/useGamificationStore";
 import LearnScreen from "@/components/LearnScreen";
 import { InfoTooltip } from "@/components/ScoreTooltip";
-import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo, createContext, useContext } from "react";
+import { useStock, useSearch, useDebounce } from "@/hooks/useStock";
 import { useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
 import { calcPurification, computePortfolioMetrics } from "@/domain/aaoifi";
 import type { Asset, PortfolioItem, ChartPeriod, ChartPoint } from "@/domain/types";
 import { auth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { SUPABASE_AVAILABLE } from "@/lib/supabase";
+import { useAuth } from "@/hooks/useAuth";
+import { portfolioDB, watchlistDB } from "@/lib/db";
 
 // ── Design Tokens ──────────────────────────────────────────────────
 const T = {
@@ -21,6 +24,17 @@ const T = {
   red:"#A32D2D", redBg:"#FCEBEB",
   darkBg:"#111A14", darkSurface:"#1A2A20",
 };
+// ── Currency context ──────────────────────────────────────────────
+const EUR_USD = 0.92; // taux indicatif — affichage uniquement
+const CurrCtx = createContext<{
+  cur: "USD"|"EUR";
+  setCur: (c:"USD"|"EUR") => void;
+  fmtP: (v:number) => string;
+  sym: string;
+  rate: number;
+}>({ cur:"USD", setCur:()=>{}, fmtP:(v)=>`${v.toFixed(2)}$`, sym:"$", rate:1 });
+const useCur = () => useContext(CurrCtx);
+
 const STATUS: any = {
   "conforme": { color: "#208640", bg: "#EAF3DE", label: "Conforme", icon: "✅" },
   "douteux": { color: "#B07D2A", bg: "#FDF3E0", label: "Douteux", icon: "⚠️" },
@@ -61,22 +75,7 @@ function mkP(b:number,v:number,t:number): Record<ChartPeriod,ChartPoint[]> {
   return {"1D":genPts(b,v*.3,48,t*.02),"1S":genPts(b,v*.5,56,t*.05),"1M":genPts(b,v,60,t*.15),"1A":genPts(b,v*1.5,52,t)};
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────
-function useAsync<T>(fn:()=>Promise<T>, deps:any[]=[]) {
-  const [s,set] = useState<{data:T|null;isLoading:boolean;error:string|null}>({data:null,isLoading:true,error:null});
-  const m = useRef(true);
-  useEffect(()=>{
-    m.current=true; set(x=>({...x,isLoading:true,error:null}));
-    fn().then(d=>{if(m.current)set({data:d,isLoading:false,error:null});}).catch(e=>{if(m.current)set({data:null,isLoading:false,error:e.message});});
-    return()=>{m.current=false;};
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  },deps); return s;
-}
-function useStock(ticker:string|null,period:ChartPeriod="1M"){
-  return useAsync(()=>ticker?fetch(`/api/stock/${ticker}?period=${period}`).then(r=>{if(!r.ok)throw new Error("Ticker introuvable");return r.json();}):Promise.resolve(null),[ticker,period]);
-}
-function useSearch(q:string){return useAsync(()=>q.length>=2?fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r=>r.json()):Promise.resolve({results:[]}),[q]);}
-function useDebounce<T>(v:T,d:number):T{const[db,set]=useState(v);useEffect(()=>{const h=setTimeout(()=>set(v),d);return()=>clearTimeout(h);},[v,d]);return db;}
+// ── Hooks — imported from @/hooks/useStock ─────────────────────────
 
 // ── Toast ─────────────────────────────────────────────────────────
 let _toast:((m:string,t?:string)=>void)|null=null;
@@ -128,7 +127,10 @@ const ScoreRing=memo(({score,size=64}:{score:number;size?:number})=>{
 ScoreRing.displayName="ScoreRing";
 
 // ── Chart avec Y-axis visible ─────────────────────────────────────
-const Chart=memo(({data,color=T.emerald,height=130,showYAxis=true,label=""}:{data:ChartPoint[];color?:string;height?:number;showYAxis?:boolean;label?:string})=>{
+const Chart=memo(({data,color=T.emerald,height=130,showYAxis=true,label="",rawCurrency=false}:{data:ChartPoint[];color?:string;height?:number;showYAxis?:boolean;label?:string;rawCurrency?:boolean})=>{
+  const{sym,rate}=useCur();
+  // rawCurrency=true → données déjà dans la bonne devise (ex: portefeuille)
+  const r=rawCurrency?1:rate;
   const[hov,setHov]=useState<number|null>(null);
   const svgRef=useRef<SVGSVGElement>(null);
   const W=340,H=height,PT=8,PB=22,PL=showYAxis?42:8,PR=8;
@@ -144,7 +146,7 @@ const Chart=memo(({data,color=T.emerald,height=130,showYAxis=true,label=""}:{dat
   const area=`M${pts[0]?.x||PL},${PT+cH} ${pts.map(p=>`L${p.x},${p.y}`).join(" ")} L${pts[pts.length-1]?.x||PL+cW},${PT+cH} Z`;
   const gid=`g${color.replace(/[^a-z0-9]/gi,"")}${data.length}`;
   const hovPt=hov!==null?pts[hov]:null;
-  const fmtV=(v:number)=>v>=1000?`${(v/1000).toFixed(1)}k`:`${v.toFixed(0)}`;
+  const fmtV=(v:number)=>{const cv=v*r;return cv>=1000?`${(cv/1000).toFixed(1)}k`:`${cv.toFixed(0)}`;};
   const fmtT=(ts:number)=>{const d=new Date(ts);return d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});};
   const onMove=useCallback((e:React.MouseEvent|React.TouchEvent)=>{
     if(!svgRef.current)return;
@@ -167,7 +169,7 @@ const Chart=memo(({data,color=T.emerald,height=130,showYAxis=true,label=""}:{dat
       {/* Valeur au survol */}
       <div style={{height:22,marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
         {hovPt?(
-          <><span style={{fontSize:14,fontWeight:800,color:T.text,fontFamily:"'DM Serif Display',serif"}}>{fmtV(hovPt.v)}€</span><span style={{fontSize:11,color:T.textMuted}}>{fmtT(hovPt.t)}</span></>
+          <><span style={{fontSize:14,fontWeight:800,color:T.text,fontFamily:"'DM Serif Display',serif"}}>{fmtV(hovPt.v)}{sym}</span><span style={{fontSize:11,color:T.textMuted}}>{fmtT(hovPt.t)}</span></>
         ):<span style={{fontSize:11,color:T.textMuted}}>{label}</span>}
       </div>
       <div style={{cursor:"crosshair"}} onMouseMove={onMove} onMouseLeave={()=>setHov(null)} onTouchMove={onMove} onTouchEnd={()=>setHov(null)}>
@@ -186,7 +188,7 @@ const Chart=memo(({data,color=T.emerald,height=130,showYAxis=true,label=""}:{dat
           {/* Y-axis labels */}
           {showYAxis&&yTicks.map((v,i)=>{
             const y=PT+cH-((v-min)/range)*cH;
-            return<text key={i} x={PL-5} y={y+1} textAnchor="end" dominantBaseline="middle" fontSize="9" fill={T.textMuted} fontFamily="'Cabinet Grotesk',sans-serif">{fmtV(v)}€</text>;
+            return<text key={i} x={PL-5} y={y+1} textAnchor="end" dominantBaseline="middle" fontSize="9" fill={T.textMuted} fontFamily="'Cabinet Grotesk',sans-serif">{fmtV(v)}{sym}</text>;
           })}
           {/* Area */}
           <path d={area} fill={`url(#${gid})`}/>
@@ -330,6 +332,7 @@ function AuthModal({onClose}:{onClose:()=>void}){
   const[mode,setMode]=useState<"signin"|"signup">("signin");
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[pw2,setPw2]=useState("");
   const[loading,setL]=useState(false);const[err,setErr]=useState("");const[ok,setOk]=useState(false);
+  const[showPw,setShowPw]=useState(false);const[showPw2,setShowPw2]=useState(false);
   const toast=useToast();
   const submit=async()=>{
     setErr("");if(!email||!pw){setErr("Tous les champs sont requis.");return;}
@@ -360,8 +363,27 @@ function AuthModal({onClose}:{onClose:()=>void}){
       <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Email</label>
       <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="vous@email.com" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:12}}/>
       <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Mot de passe</label>
-      <input type="password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:mode==="signup"?12:20}}/>
-      {mode==="signup"&&<><label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Confirmer</label><input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",marginBottom:20}}/></>}
+      <div style={{position:"relative",marginBottom:mode==="signup"?12:20}}>
+        <input type={showPw?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",paddingRight:42,marginBottom:0}}/>
+        <button type="button" onClick={()=>setShowPw(v=>!v)} aria-label={showPw?"Masquer":"Afficher"} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:4,color:T.textMuted,display:"flex",alignItems:"center"}}>
+          {showPw
+            ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          }
+        </button>
+      </div>
+      {mode==="signup"&&<>
+        <label style={{fontSize:12,color:T.textSub,marginBottom:5,display:"block"}}>Confirmer</label>
+        <div style={{position:"relative",marginBottom:20}}>
+          <input type={showPw2?"text":"password"} value={pw2} onChange={e=>setPw2(e.target.value)} placeholder="••••••••" style={{...BS.input,width:"100%",boxSizing:"border-box",paddingRight:42,marginBottom:0}}/>
+          <button type="button" onClick={()=>setShowPw2(v=>!v)} aria-label={showPw2?"Masquer":"Afficher"} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",padding:4,color:T.textMuted,display:"flex",alignItems:"center"}}>
+            {showPw2
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            }
+          </button>
+        </div>
+      </>}
       <button style={{...BS.btnPrimary,opacity:loading?.7:1}} onClick={submit} disabled={loading}>{loading?"Chargement…":mode==="signin"?"Se connecter":"Créer mon compte"}</button>
     </Modal>
   );
@@ -387,12 +409,15 @@ function usePortfolios(){
   const updateQty=(ticker:string,delta:number)=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:p.holdings.map(h=>h.ticker===ticker?{...h,qty:Math.max(1,h.qty+delta)}:h)}:p));
   const inActive=(ticker:string)=>active.holdings.some(h=>h.ticker===ticker);
   const getQty=(ticker:string)=>active.holdings.find(h=>h.ticker===ticker)?.qty??0;
+  const setHoldingId=(ticker:string,id:string)=>setPf(ps=>ps.map(p=>({...p,holdings:p.holdings.map(h=>h.ticker===ticker?{...h,_id:id}:h)})));
+  const syncFromDB=(items:PortfolioItem[])=>setPf(ps=>ps.map(p=>p.id===activeId?{...p,holdings:items}:p));
   const metrics=useMemo(()=>computePortfolioMetrics(active.holdings),[active]);
-  return{portfolios,active,activeId,setActiveId,createPf,renamePf,deletePf,addToActive,removeFromActive,updateQty,inActive,getQty,metrics};
+  return{portfolios,active,activeId,setActiveId,createPf,renamePf,deletePf,addToActive,removeFromActive,updateQty,inActive,getQty,setHoldingId,syncFromDB,metrics};
 }
 
 // ── Fundamentals Block (DCF + multiples + quarterly) ─────────────
 function FundamentalsBlock({asset,ticker,isPremium,onUpgrade}:{asset:any;ticker:string;isPremium:boolean;onUpgrade:()=>void}){
+  const{fmtP}=useCur();
   const[tab,setTab]=useState<"dcf"|"multiples"|"quarters">("dcf");
   const[showAll,setShowAll]=useState(false);
 
@@ -478,7 +503,7 @@ function FundamentalsBlock({asset,ticker,isPremium,onUpgrade}:{asset:any;ticker:
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
                 <div>
                   <p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Valeur intrinsèque estimée</p>
-                  <p style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:T.text}}>{dcfValue}$</p>
+                  <p style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:T.text}}>{fmtP(parseFloat(dcfValue))}</p>
                 </div>
                 <div style={{textAlign:"right"}}>
                   <div style={{background:isUndervalued?T.greenBg:T.redBg,color:isUndervalued?T.green:T.red,borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:700}}>{isUndervalued?"Sous-évalué":"Sur-évalué"}</div>
@@ -487,7 +512,7 @@ function FundamentalsBlock({asset,ticker,isPremium,onUpgrade}:{asset:any;ticker:
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                 <div style={{background:T.surface2,borderRadius:8,padding:10}}>
                   <p style={{fontSize:9,color:T.textMuted,marginBottom:2}}>Cours actuel</p>
-                  <p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.price}$</p>
+                  <p style={{fontSize:13,fontWeight:700,color:T.text}}>{fmtP(asset.price)}</p>
                 </div>
                 <div style={{background:isUndervalued?T.greenBg:T.redBg,borderRadius:8,padding:10}}>
                   <p style={{fontSize:9,color:isUndervalued?T.green:T.red,marginBottom:2}}>Potentiel DCF</p>
@@ -573,8 +598,10 @@ function FundamentalsBlock({asset,ticker,isPremium,onUpgrade}:{asset:any;ticker:
 
 // ── StockCard ─────────────────────────────────────────────────────
 function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>void;pfCtx:ReturnType<typeof usePortfolios>}){
+  const{fmtP,cur,setCur}=useCur();
   const{toggle:wlToggle,inList:inWl}=useWatchlistStore();
   const isPremium=useUserStore(s=>s.isPremium);
+  const userId=useUserStore(s=>s.id);
   const toast=useToast();
   const[period,setPeriod]=useState<ChartPeriod>("1M");
   const[showWhy,setShowWhy]=useState(false);
@@ -619,10 +646,15 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
           </div>
           <ScoreRing score={asset.score} size={60}/>
         </div>
-        {/* Prix */}
-        <div style={{marginBottom:14}}>
-          <div style={{fontFamily:"'DM Serif Display',serif",fontSize:26,color:T.text,lineHeight:1}}>{asset.price}$</div>
-          <div style={{fontSize:12,color:cc,fontWeight:700,marginTop:3}}>{(asset.change??0)>=0?"+":""}{asset.change}% aujourd'hui</div>
+        {/* Prix + toggle devise */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{fontFamily:"'DM Serif Display',serif",fontSize:26,color:T.text,lineHeight:1}}>{fmtP(asset.price)}</div>
+            <div style={{fontSize:12,color:cc,fontWeight:700,marginTop:3}}>{(asset.change??0)>=0?"+":""}{asset.change}% aujourd'hui</div>
+          </div>
+          <button onClick={()=>setCur(cur==="USD"?"EUR":"USD")} style={{height:26,padding:"0 10px",background:T.surface2,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11,fontWeight:700,color:T.textSub,cursor:"pointer",fontFamily:"inherit",flexShrink:0,marginTop:3}}>
+            {cur==="USD"?"$ USD":"€ EUR"}
+          </button>
         </div>
         {/* Période */}
         <div style={{display:"flex",gap:4,marginBottom:8}}>
@@ -675,7 +707,25 @@ function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:string)=>v
           <button onClick={()=>isInPf?setShowAddModal(true):setShowAddModal(true)} style={{flex:1,height:46,background:isInPf?T.greenBg:T.forest,border:`1px solid ${isInPf?T.green:T.forest}`,borderRadius:12,color:isInPf?T.green:"#E8F0EB",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
             {isInPf?"Renforcer la position +":"+ Ajouter au portefeuille"}
           </button>
-          <button onClick={()=>{const wasWl=isWatched;wlToggle(asset);if(!wasWl){useGamificationStore.getState().trackWatchlist();}toast(wasWl?`Retiré`:`${ticker} suivi 🔖`);}} style={{width:46,height:46,background:isWatched?T.greenBg:T.surface2,border:`1px solid ${isWatched?T.green:T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
+          <button onClick={async()=>{
+            const wasWl=isWatched;
+            wlToggle(asset);
+            console.log("[watchlist] userId:", userId, "wasWatched:", wasWl);
+            if(!wasWl){
+              useGamificationStore.getState().trackWatchlist();
+              toast(`${ticker} suivi 🔖`);
+              if(userId!=="guest"){
+                const row=await watchlistDB.add(userId,asset.ticker,{name:asset.name,sector:asset.sector,score:asset.score,status:asset.status,price:asset.price,change_pct:asset.change});
+                if(row)useWatchlistStore.getState().setId(asset.ticker,row.id);
+              }
+            }else{
+              toast(`Retiré`);
+              if(userId!=="guest"){
+                const _id=useWatchlistStore.getState()._ids[asset.ticker];
+                if(_id)watchlistDB.remove(_id).catch(()=>{});
+              }
+            }
+          }} style={{width:46,height:46,background:isWatched?T.greenBg:T.surface2,border:`1px solid ${isWatched?T.green:T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}}>🔖</button>
           <button onClick={()=>onReport(ticker)} style={{width:46,height:46,background:T.surface2,border:`1px solid ${T.border}`,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center"}} title="Rapport">📋</button>
         </div>
       </div>
@@ -853,6 +903,7 @@ function AddToPortfolioModal({asset,pfCtx,onClose}:{asset:any;pfCtx:ReturnType<t
   const[mode,setMode]=useState<"eur"|"shares">("eur");
   const[eurVal,setEurVal]=useState("100");
   const[sharesVal,setSharesVal]=useState("");
+  const userId=useUserStore(s=>s.id);
   const price=asset.price??1;
   const parsedEur=parseFloat(eurVal)||0;
   const parsedShares=parseFloat(sharesVal)||0;
@@ -860,7 +911,17 @@ function AddToPortfolioModal({asset,pfCtx,onClose}:{asset:any;pfCtx:ReturnType<t
   const eurFromShares=(parsedShares*price);
   const finalShares=mode==="eur"?sharesFromEur:parsedShares;
   const finalEur=mode==="eur"?parsedEur:eurFromShares;
-  const handleAdd=()=>{if(finalShares<=0)return;pfCtx.addToActive(asset,parseFloat(finalShares.toFixed(4)));onClose();};
+  const handleAdd=async()=>{
+    if(finalShares<=0)return;
+    const qty=parseFloat(finalShares.toFixed(4));
+    pfCtx.addToActive(asset,qty);
+    onClose();
+    console.log("[portfolio add] userId:", userId, "ticker:", asset.ticker, "qty:", qty);
+    if(userId!=="guest"){
+      const row=await portfolioDB.add(userId,asset.ticker,qty,asset.price);
+      if(row)pfCtx.setHoldingId(asset.ticker,row.id);
+    }
+  };
   return(
     <Modal onClose={onClose}>
       <h2 style={{fontSize:19,fontWeight:800,color:T.text,marginBottom:4}}>Ajouter {asset.ticker}</h2>
@@ -1296,11 +1357,11 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center",background:T.surface2,borderRadius:7,overflow:"hidden"}}>
-                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:"inherit",fontWeight:700}} onClick={()=>{pfCtx.updateQty(h.ticker,-1);toast(`${h.ticker} : ${Math.max(1,h.qty-1)} action${h.qty-1>1?"s":""}`);}}>−</button>
+                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.textSub,fontFamily:"inherit",fontWeight:700}} onClick={()=>{const nq=Math.max(1,h.qty-1);pfCtx.updateQty(h.ticker,-1);toast(`${h.ticker} : ${nq} action${nq>1?"s":""}`);if(h._id)portfolioDB.updateQty(h._id,nq).catch(()=>{});}}>−</button>
                     <span style={{fontSize:11,fontWeight:800,color:T.text,padding:"0 2px"}}>{h.qty}</span>
-                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.green,fontFamily:"inherit",fontWeight:700}} onClick={()=>{pfCtx.updateQty(h.ticker,1);toast(`${h.ticker} renforcé ✓`);}}>+</button>
+                    <button style={{width:26,height:26,background:"none",border:"none",cursor:"pointer",fontSize:13,color:T.green,fontFamily:"inherit",fontWeight:700}} onClick={()=>{const nq=h.qty+1;pfCtx.updateQty(h.ticker,1);toast(`${h.ticker} renforcé ✓`);if(h._id)portfolioDB.updateQty(h._id,nq).catch(()=>{});}}>+</button>
                   </div>
-                  <button style={{...BS.microBtn,color:T.red,borderColor:`${T.red}22`,fontSize:10}} onClick={()=>{pfCtx.removeFromActive(h.ticker);toast(`${h.ticker} retiré`,"info");}}>Retirer</button>
+                  <button style={{...BS.microBtn,color:T.red,borderColor:`${T.red}22`,fontSize:10}} onClick={()=>{const _id=h._id;pfCtx.removeFromActive(h.ticker);toast(`${h.ticker} retiré`,"info");if(_id)portfolioDB.remove(_id).catch(()=>{});}}>Retirer</button>
                 </div>
               </div>
             </article>
@@ -1380,8 +1441,9 @@ const PROFILE_FAQ=[
 ];
 
 // ── Profile Screen ────────────────────────────────────────────────
-function ProfileScreen({setTab}:{setTab:(t:string)=>void}){
-  const{isPremium,screenings,setIsPremium}=useUserStore();
+function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>Promise<void>}){
+  const{isPremium,screenings,setIsPremium,email,id}=useUserStore();
+  const isGuest=id==="guest";
   const toast=useToast();
   const[showUp,setShowUp]=useState(false);const[showAuth,setShowAuth]=useState(false);
   const[openFaq,setOpenFaq]=useState<number|null>(null);
@@ -1406,7 +1468,13 @@ function ProfileScreen({setTab}:{setTab:(t:string)=>void}){
           <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:12}}><span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"#E8F0EB"}}>{SUB.PRICE}€</span><span style={{fontSize:12,color:"rgba(200,230,201,0.5)"}}>/ mois après {SUB.TRIAL} jours d'essai</span></div>
           <div style={{background:"#E8F0EB",borderRadius:10,padding:"10px",textAlign:"center",fontSize:13,fontWeight:700,color:T.forest}}>Commencer l'essai gratuit</div>
         </button>}
-        <button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:15,marginBottom:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🔐</span><span style={{fontSize:13,color:T.text}}>Se connecter / Créer un compte</span></div><span style={{color:T.textMuted}}>›</span></button>
+        {isGuest
+          ?<button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:15,marginBottom:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🔐</span><span style={{fontSize:13,color:T.text}}>Se connecter / Créer un compte</span></div><span style={{color:T.textMuted}}>›</span></button>
+          :<div style={{width:"100%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:15,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>👤</span><span style={{fontSize:13,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:220}}>{email}</span></div>
+            <button onClick={onSignOut} style={{background:"none",border:`1px solid ${T.red}30`,borderRadius:8,padding:"4px 10px",color:T.red,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Déconnecter</button>
+          </div>
+        }
         <button onClick={()=>setTab("portfolio")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>📊</span><span style={{fontSize:13,color:T.text}}>Mes portefeuilles</span></div><span style={{color:T.textMuted}}>›</span></button>
         <button onClick={()=>setTab("portfolio")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🧮</span><span style={{fontSize:13,color:T.text}}>Calcul Zakat</span></div><span style={{color:T.textMuted}}>›</span></button>
         <button onClick={()=>toast("Support disponible à support@pur.app","info")} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",background:"none",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>💬</span><span style={{fontSize:13,color:T.text}}>Support</span></div><span style={{color:T.textMuted}}>›</span></button>
@@ -1499,45 +1567,67 @@ export default function App(){
   const pfCtx=usePortfolios();
 
   // ── Auth + premium init ──────────────────────────────────────────
-  const setUser=useUserStore(s=>s.setUser);
-  const setIsPremium=useUserStore(s=>s.setIsPremium);
-  const resetUser=useUserStore(s=>s.reset);
+  useAuth(); // activates onAuthStateChange listener
+  const handleSignOut = useCallback(async () => {
+    try { await auth.signOut(); } catch(e) { console.error("[signOut]", e); }
+    useUserStore.getState().reset();
+    useWatchlistStore.getState().clear();
+    pfCtx.syncFromDB([]);
+    setTab("home");
+  }, [pfCtx]);
+  const userId = useUserStore(s => s.id);
+  const setIsPremium = useUserStore(s => s.setIsPremium);
 
+  // Validate premium status server-side when user logs in
   useEffect(()=>{
-    const validatePremium=async(token:string)=>{
-      try{
-        const res=await fetch("/api/subscription/validate",{headers:{Authorization:`Bearer ${token}`}});
-        if(res.ok){const{isPremium}=await res.json();setIsPremium(isPremium);}
-      }catch{}
-    };
-
-    // Vérifie la session existante au démarrage (refresh token persisté)
+    if(userId==="guest")return;
     auth.getSession().then(session=>{
-      if(session){
-        setUser({id:session.user.id,email:session.user.email??null});
-        validatePremium(session.access_token);
-      }
+      if(!session)return;
+      fetch("/api/subscription/validate",{headers:{Authorization:`Bearer ${session.access_token}`}})
+        .then(r=>r.ok?r.json():null)
+        .then(d=>{if(d?.isPremium!==undefined)setIsPremium(d.isPremium);})
+        .catch(()=>{});
     });
+  },[userId,setIsPremium]);
 
-    // Écoute les changements de session (login, logout, refresh token)
-    const{data:{subscription}}=supabase.auth.onAuthStateChange(async(_event,session)=>{
-      if(session){
-        setUser({id:session.user.id,email:session.user.email??null});
-        await validatePremium(session.access_token);
-      }else{
-        resetUser();
-      }
-    });
-
-    return()=>subscription.unsubscribe();
-  },[]);
+  // Sync portfolio from Supabase on login — clear on logout
+  useEffect(()=>{
+    if(userId==="guest"){
+      // Clear local portfolio on logout
+      pfCtx.syncFromDB([]);
+      return;
+    }
+    portfolioDB.list(userId).then(rows=>{
+      console.log("[portfolioDB.list] rows from DB:", rows.length);
+      if(!rows.length)return;
+      const holdings=rows.map(r=>({
+        ticker:r.ticker,name:r.ticker,type:"stock" as const,
+        qty:r.qty,paidPrice:r.paid_price,_id:r.id,
+        price:0,change:0,score:0,esgScore:70,status:"halal" as const,
+        ratioDebt:0,ratioRevHaram:0,ratioCash:0,
+        divYield:0,divAnnual:0,divHaramPct:0,beta:1,
+        sector:"N/A",country:"🌍",mktCap:"N/A",
+        volatility:"Modérée" as const,scoreHistory:[],
+        periods:{"1D":[],"1S":[],"1M":[],"1A":[]},
+        opportunities:false,newlyHalal:false,whyHalal:[],
+      }));
+      pfCtx.syncFromDB(holdings);
+    }).catch((e)=>console.error("[portfolioDB.list]", e));
+  },[userId]); // eslint-disable-line react-hooks/exhaustive-deps
   // ────────────────────────────────────────────────────────────────
 
   useEffect(()=>{const t1=setTimeout(()=>setSplashOut(true),1600);const t2=setTimeout(()=>setPhase("app"),1950);return()=>{clearTimeout(t1);clearTimeout(t2);};},[]);
   const openReport=useCallback((t:string)=>setReportTicker(t),[]);
   const closeReport=useCallback(()=>setReportTicker(null),[]);
 
+  // ── Currency preference ──────────────────────────────────────────
+  const[cur,setCurState]=useState<"USD"|"EUR">(()=>{try{return(localStorage.getItem("pur_currency") as "USD"|"EUR")||"USD";}catch{return "USD";}});
+  const setCur=useCallback((c:"USD"|"EUR")=>{setCurState(c);try{localStorage.setItem("pur_currency",c);}catch{};},[]);
+  const fmtP=useCallback((v:number)=>cur==="EUR"?`${(v*EUR_USD).toFixed(2)}€`:`${v.toFixed(2)}$`,[cur]);
+  const currValue=useMemo(()=>({cur,setCur,fmtP,sym:cur==="EUR"?"€":"$",rate:cur==="EUR"?EUR_USD:1}),[cur,setCur,fmtP]);
+
   return(
+    <CurrCtx.Provider value={currValue}>
     <ToastProvider>
       <div style={{minHeight:"100vh",background:T.bg,display:"flex",justifyContent:"center"}}>
         <div style={{width:"100%",maxWidth:430,minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
@@ -1584,7 +1674,7 @@ export default function App(){
               {tab==="portfolio" &&<PortfolioScreen setTab={setTab}/>}
               {tab==="watchlist" &&<WatchlistScreen/>}
               {tab==="learn"      &&<LearnScreen/>}
-              {tab==="profile"   &&<ProfileScreen setTab={setTab}/>}
+              {tab==="profile"   &&<ProfileScreen setTab={setTab} onSignOut={handleSignOut}/>}
 
               <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",padding:"8px 0 24px",zIndex:100}}>
                 {TABS.map(t=>(
@@ -1600,5 +1690,6 @@ export default function App(){
         </div>
       </div>
     </ToastProvider>
+    </CurrCtx.Provider>
   );
 }
