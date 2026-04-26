@@ -331,31 +331,47 @@ function UpgradeModal({onClose}:{onClose:()=>void}){
 function AuthModal({onClose}:{onClose:()=>void}){
   const[mode,setMode]=useState<"signin"|"signup">("signin");
   const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[pw2,setPw2]=useState("");
-  const[loading,setL]=useState(false);const[err,setErr]=useState("");const[ok,setOk]=useState(false);
+  const[loading,setL]=useState(false);const[err,setErr]=useState("");
   const[showPw,setShowPw]=useState(false);const[showPw2,setShowPw2]=useState(false);
   const toast=useToast();
+  const withTimeout=<T,>(p:Promise<T>,ms=8000):Promise<T>=>
+    Promise.race([p,new Promise<never>((_,r)=>setTimeout(()=>r(new Error("timeout")),ms))]);
+
   const submit=async()=>{
     setErr("");if(!email||!pw){setErr("Tous les champs sont requis.");return;}
     if(mode==="signup"&&pw!==pw2){setErr("Les mots de passe ne correspondent pas.");return;}
     setL(true);
     try{
       if(mode==="signup"){
-        const{error,needsConfirmation}=await auth.signUp(email,pw);
+        // Signup via API route (admin auto-confirme, pas d'email requis)
+        const res=await withTimeout(fetch("/api/auth/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password:pw})}));
+        const json=await res.json();
+        if(json.error){setErr(json.error);return;}
+        // Compte créé et confirmé → connexion immédiate
+        const{error}=await withTimeout(auth.signIn(email,pw));
         if(error){setErr(error);return;}
-        if(needsConfirmation){setOk(true);return;}
       }else{
-        const{error}=await auth.signIn(email,pw);
-        if(error){setErr(error);return;}
+        const{error}=await withTimeout(auth.signIn(email,pw));
+        if(error){
+          if(error.toLowerCase().includes("invalid")||error.toLowerCase().includes("credentials")){
+            setErr("Email ou mot de passe incorrect.");
+          }else if(error.toLowerCase().includes("confirm")){
+            setErr("Email non confirmé. Recréez votre compte.");
+          }else{
+            setErr(error);
+          }
+          return;
+        }
       }
       toast("Bienvenue !");
       onClose();
-    }catch{
-      setErr("Erreur réseau. Réessayez.");
+    }catch(e:any){
+      if(e?.message==="timeout"){setErr("Délai dépassé. Vérifiez votre connexion.");}
+      else{setErr("Erreur réseau. Réessayez.");}
     }finally{
       setL(false);
     }
   };
-  if(ok)return<Modal onClose={onClose}><div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:48,marginBottom:14}}>📧</div><h2 style={{fontSize:20,fontWeight:800,color:T.text,marginBottom:10}}>Vérifiez votre email</h2><p style={{fontSize:13,color:T.textSub,lineHeight:1.7}}>Lien envoyé à <strong style={{color:T.text}}>{email}</strong></p><button style={{...BS.btnGhost,marginTop:20,padding:"0 24px"}} onClick={onClose}>Fermer</button></div></Modal>;
   return(
     <Modal onClose={onClose}>
       <div style={{marginBottom:18,textAlign:"center"}}><PurLogo size={30}/></div>
