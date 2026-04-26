@@ -822,15 +822,18 @@ function HomeScreen({setTab,openReport}:{setTab:(t:string)=>void;openReport:(t:s
   const m=pfCtx.metrics;
   const[homePeriod,setHomePeriod]=useState<"1J"|"1M"|"YTD"|"1A"|"5A">("1M");
   const pfPts=useMemo(()=>{
-    const base=m.value||3500;const now=Date.now();
-    const cfg:{n:number;span:number;vol:number;tr:number}={
+    const now=Date.now();
+    const cfgMap:{[k:string]:{n:number;span:number;vol:number;tr:number}}={
       "1J":{n:24,span:86400000,vol:.004,tr:.005},
       "1M":{n:30,span:30*86400000,vol:.012,tr:.04},
       "YTD":{n:Math.max(7,Math.floor((Date.now()-new Date(new Date().getFullYear(),0,1).getTime())/86400000)),span:Date.now()-new Date(new Date().getFullYear(),0,1).getTime(),vol:.015,tr:.09},
       "1A":{n:52,span:365*86400000,vol:.018,tr:.15},
       "5A":{n:60,span:5*365*86400000,vol:.025,tr:.65},
-    }[homePeriod];
-    let v=base*(1-cfg.tr);
+    };
+    const cfg=cfgMap[homePeriod];
+    // Portefeuille vide → ligne plate à 0
+    if(!m.value)return Array.from({length:cfg.n},(_,i)=>({t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:0}));
+    let v=m.value*(1-cfg.tr);
     return Array.from({length:cfg.n},(_,i)=>{v*=(1+(Math.random()-.44)*cfg.vol+cfg.tr/cfg.n);return{t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:parseFloat(v.toFixed(2))};});
   },[m.value,homePeriod]);
 
@@ -851,7 +854,7 @@ function HomeScreen({setTab,openReport}:{setTab:(t:string)=>void;openReport:(t:s
             <div>
               <p style={{fontSize:10,color:"rgba(200,230,201,0.5)",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:3}}>{pfCtx.active.name}</p>
               <p style={{fontFamily:"'DM Serif Display',serif",fontSize:28,color:"#E8F0EB",lineHeight:1}}>{m.value.toLocaleString("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0})}</p>
-              <p style={{fontSize:12,color:m.gain>=0?"#A5D6A7":"#EF9A9A",fontWeight:700,marginTop:3}}>{m.gain>=0?"+":""}{m.gain.toFixed(0)}€ · {m.gain>=0?"+":""}{m.gainPct.toFixed(2)}%</p>
+              <p style={{fontSize:12,color:"rgba(200,230,201,0.5)",fontWeight:700,marginTop:3}}>{m.value>0?`${m.gain>=0?"+":""}${m.gain.toFixed(0)}€ · ${m.gain>=0?"+":""}${m.gainPct.toFixed(2)}%`:"Ajoutez vos actions"}</p>
             </div>
             <div style={{textAlign:"center",background:"rgba(255,255,255,0.07)",borderRadius:10,padding:"8px 12px"}}>
               <div style={{fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:22,fontWeight:800,color:m.conform>=75?"#A5D6A7":"#FFE082"}}>{m.conform}</div>
@@ -1130,19 +1133,25 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
   const[pfPeriod,setPfPeriod]=useState<"1J"|"1M"|"YTD"|"1A"|"5A">("1M");
   const m=pfCtx.metrics;
   const pfPts=useMemo(()=>{
-    const base=m.value||3500;const now=Date.now();
-    const cfg:{n:number;span:number;vol:number;tr:number}={
+    const now=Date.now();
+    const cfgMap:{[k:string]:{n:number;span:number;vol:number;tr:number}}={
       "1J":{n:24,span:86400000,vol:.004,tr:.005},
       "1M":{n:30,span:30*86400000,vol:.012,tr:.04},
       "YTD":{n:Math.floor((Date.now()-new Date(new Date().getFullYear(),0,1).getTime())/86400000)||30,span:Date.now()-new Date(new Date().getFullYear(),0,1).getTime(),vol:.015,tr:.09},
       "1A":{n:52,span:365*86400000,vol:.018,tr:.15},
       "5A":{n:60,span:5*365*86400000,vol:.025,tr:.65},
-    }[pfPeriod];
-    let v=base*(1-cfg.tr);
+    };
+    const cfg=cfgMap[pfPeriod];
+    // Portefeuille vide → ligne plate à 0
+    if(!m.value)return Array.from({length:cfg.n},(_,i)=>({t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:0}));
+    let v=m.value*(1-cfg.tr);
     return Array.from({length:cfg.n},(_,i)=>{v*=(1+(Math.random()-.44)*cfg.vol+cfg.tr/cfg.n);return{t:now-cfg.span+(i/(cfg.n-1||1))*cfg.span,v:parseFloat(v.toFixed(2))};});
   },[m.value,pfPeriod]);
   const bmkPts=useMemo(()=>{
-    const bm=BENCHMARKS[benchmark];const base=m.value||3500;const startBase=base*(1-bm.trend*.5);const now=Date.now();
+    const bm=BENCHMARKS[benchmark];const now=Date.now();
+    // Portefeuille vide → benchmark aussi à 0
+    if(!m.value)return Array.from({length:pfPts.length},(_,i)=>({t:pfPts[i]?.t??now,v:0}));
+    const startBase=m.value*(1-bm.trend*.5);
     return Array.from({length:pfPts.length},(_,i)=>({t:pfPts[i]?.t??now,v:startBase*(1+bm.trend*(i/(pfPts.length-1||1))+(Math.random()-.5)*.015)}));
   },[m.value,benchmark,pfPts.length]);
   // TWR approximation: product of daily returns
@@ -1172,7 +1181,7 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
   const zakatAmount=(m.value*zakatRate);
   const zakatThreshold=5000; // Seuil simplifi
   const zakatDue=m.value>zakatThreshold;
-  const sectorSegs=useMemo(()=>Object.entries(m.sectors).map(([k,v],i)=>({label:k,pct:(v/m.value)*100,color:SECTOR_COLORS[i%6]})),[m]);
+  const sectorSegs=useMemo(()=>m.value>0?Object.entries(m.sectors).map(([k,v],i)=>({label:k,pct:(v/m.value)*100,color:SECTOR_COLORS[i%6]})):[],[m]);
 
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
@@ -1202,23 +1211,23 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
                 <p style={{fontFamily:"'DM Serif Display',serif",fontSize:26,color:"#E8F0EB",lineHeight:1}}>{m.value.toLocaleString("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0})}</p>
                 <button onClick={()=>{setEditId(pfCtx.activeId);setEditName(pfCtx.active.name);}} style={{background:"rgba(255,255,255,0.1)",border:"none",borderRadius:6,padding:"3px 8px",color:"rgba(200,230,201,0.6)",fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>✎</button>
               </div>
-              <p style={{fontSize:12,color:m.gain>=0?"#A5D6A7":"#EF9A9A",fontWeight:700,marginTop:3}}>{m.gain>=0?"+":""}{m.gain.toFixed(0)}€ ({m.gain>=0?"+":""}{m.gainPct.toFixed(2)}%)</p>
+              <p style={{fontSize:12,color:m.gain>=0?"#A5D6A7":"#EF9A9A",fontWeight:700,marginTop:3}}>{m.value>0?`${m.gain>=0?"+":""}${m.gain.toFixed(0)}€ (${m.gain>=0?"+":""}${m.gainPct.toFixed(2)}%)`:"Aucune position"}</p>
             </div>
             <div style={{textAlign:"center"}}>
               <div style={{fontSize:20,fontWeight:800,color:m.conform>=75?"#A5D6A7":"#FFE082"}}>{m.conform}</div>
               <div style={{fontSize:8,color:"rgba(200,230,201,0.4)",letterSpacing:"0.06em"}}>SCORE</div>
             </div>
           </div>
-          {/* TWR badges */}
+          {/* TWR badges — masqués si portefeuille vide */}
           <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-            <div style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
+            {m.value>0&&<div style={{background:"rgba(255,255,255,0.1)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
               <span style={{fontSize:9,color:"rgba(200,230,201,0.6)"}}>TWR port.</span>
               <span style={{fontSize:11,fontWeight:700,color:twr>=0?"#A5D6A7":"#EF9A9A"}}>{twr>=0?"+":""}{twr.toFixed(2)}%</span>
-            </div>
-            <div style={{background:"rgba(255,255,255,0.06)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
+            </div>}
+            {m.value>0&&<div style={{background:"rgba(255,255,255,0.06)",borderRadius:8,padding:"4px 10px",display:"flex",gap:6,alignItems:"center"}}>
               <span style={{fontSize:9,color:"rgba(200,230,201,0.4)"}}>{BENCHMARKS[benchmark].label}</span>
               <span style={{fontSize:11,fontWeight:700,color:bmkTwr>=0?"rgba(200,230,201,0.7)":"#EF9A9A"}}>{bmkTwr>=0?"+":""}{bmkTwr.toFixed(2)}%</span>
-            </div>
+            </div>}
             {/* Benchmark selector */}
             <div style={{position:"relative",marginLeft:"auto"}}>
               <button onClick={()=>setShowBenchmark(v=>!v)} style={{background:"rgba(255,255,255,0.12)",border:"none",borderRadius:8,padding:"4px 10px",color:"rgba(200,230,201,0.8)",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{BENCHMARKS[benchmark].label} ▾</button>
@@ -1358,7 +1367,7 @@ function PortfolioScreen({setTab}:{setTab:(t:string)=>void}){
           </div>
         ):pfCtx.active.holdings.map(h=>{
           const gain=(h.price-h.paidPrice)*h.qty;
-          const gainPct=((h.price-h.paidPrice)/h.paidPrice*100).toFixed(1);
+          const gainPct=h.paidPrice>0?((h.price-h.paidPrice)/h.paidPrice*100).toFixed(1):"0.0";
           const si=scoreInfo(h.score);
           return(
             <article key={h.ticker} style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:14,marginBottom:9}}>
