@@ -8,9 +8,36 @@ export const auth = {
   },
 
   // Connexion email + mot de passe
-  async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    return { user: data.user, session: data.session, error: error?.message ?? null };
+  // Race entre onAuthStateChange (rapide ~1s) et signInWithPassword (lent 5-6s).
+  // Résout dès que le premier signal arrive, sans attendre le SDK lent.
+  signIn(email: string, password: string) {
+    return new Promise<{ user: any; session: any; error: string | null }>(resolve => {
+      let done = false;
+
+      // Écoute le SIGNED_IN pour résoudre immédiatement quand la session est prête
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session && !done) {
+          done = true;
+          subscription.unsubscribe();
+          resolve({ user: session.user, session, error: null });
+        }
+      });
+
+      // Fallback : la Promise native du SDK (erreurs de credentials notamment)
+      supabase.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
+        if (!done) {
+          done = true;
+          subscription.unsubscribe();
+          resolve({ user: data?.user ?? null, session: data?.session ?? null, error: error?.message ?? null });
+        }
+      }).catch(() => {
+        if (!done) {
+          done = true;
+          subscription.unsubscribe();
+          resolve({ user: null, session: null, error: "Erreur réseau" });
+        }
+      });
+    });
   },
 
   // Connexion Google (OAuth)
