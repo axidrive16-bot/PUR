@@ -366,6 +366,9 @@ function AuthModal({onClose}:{onClose:()=>void}){
       toast("Bienvenue !");
       onClose();
     }catch(e:any){
+      // Le SDK Supabase peut bloquer sa Promise même si le login a réussi.
+      // onAuthStateChange met à jour le store avant — si l'id n'est plus "guest", c'est bon.
+      if(useUserStore.getState().id!=="guest"){toast("Bienvenue !");onClose();return;}
       if(e?.message==="timeout"){setErr("Délai dépassé. Vérifiez votre connexion.");}
       else{setErr("Erreur réseau. Réessayez.");}
     }finally{
