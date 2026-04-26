@@ -341,16 +341,19 @@ function AuthModal({onClose}:{onClose:()=>void}){
     try{
       if(mode==="signup"){
         const{error,needsConfirmation}=await auth.signUp(email,pw);
-        if(error){setErr(error);setL(false);return;}
-        if(needsConfirmation){setOk(true);setL(false);return;}
+        if(error){setErr(error);return;}
+        if(needsConfirmation){setOk(true);return;}
       }else{
         const{error}=await auth.signIn(email,pw);
-        if(error){setErr(error);setL(false);return;}
+        if(error){setErr(error);return;}
       }
-      // onAuthStateChange dans App root prend en charge la session + premium
-      toast("Bienvenue !");onClose();
-    }catch{setErr("Erreur réseau");}
-    setL(false);
+      toast("Bienvenue !");
+      onClose();
+    }catch{
+      setErr("Erreur réseau. Réessayez.");
+    }finally{
+      setL(false);
+    }
   };
   if(ok)return<Modal onClose={onClose}><div style={{textAlign:"center",padding:"20px 0"}}><div style={{fontSize:48,marginBottom:14}}>📧</div><h2 style={{fontSize:20,fontWeight:800,color:T.text,marginBottom:10}}>Vérifiez votre email</h2><p style={{fontSize:13,color:T.textSub,lineHeight:1.7}}>Lien envoyé à <strong style={{color:T.text}}>{email}</strong></p><button style={{...BS.btnGhost,marginTop:20,padding:"0 24px"}} onClick={onClose}>Fermer</button></div></Modal>;
   return(
@@ -1441,7 +1444,7 @@ const PROFILE_FAQ=[
 ];
 
 // ── Profile Screen ────────────────────────────────────────────────
-function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>void}){
+function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>Promise<void>}){
   const{isPremium,screenings,setIsPremium,email,id}=useUserStore();
   const isGuest=id==="guest";
   const toast=useToast();
@@ -1568,14 +1571,13 @@ export default function App(){
 
   // ── Auth + premium init ──────────────────────────────────────────
   useAuth(); // activates onAuthStateChange listener
-  const handleSignOut = useCallback(() => {
-    // Reset local state FIRST — pas d'await réseau pour ne pas bloquer l'UI
+  const handleSignOut = useCallback(async () => {
+    // scope:local → synchrone, pas de round-trip réseau → pas de race condition avec signIn
+    await auth.signOut().catch(e => console.error("[signOut]", e));
     useUserStore.getState().reset();
     useWatchlistStore.getState().clear();
     pfCtx.syncFromDB([]);
     setTab("home");
-    // Invalide la session Supabase en arrière-plan
-    auth.signOut().catch(e => console.error("[signOut]", e));
   }, [pfCtx]);
   const userId = useUserStore(s => s.id);
   const setIsPremium = useUserStore(s => s.setIsPremium);

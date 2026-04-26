@@ -21,8 +21,8 @@ export const auth = {
     });
   },
 
-  // Déconnexion
-  signOut: () => supabase.auth.signOut(),
+  // Déconnexion — scope local uniquement (pas de round-trip réseau, évite la race condition)
+  signOut: () => supabase.auth.signOut({ scope: "local" }),
 
   // Session courante
   getSession: () => supabase.auth.getSession().then(({ data }) => data.session),
