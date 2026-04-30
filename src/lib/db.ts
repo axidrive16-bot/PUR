@@ -29,24 +29,16 @@ export const watchlistDB = {
     name?: string; sector?: string; score?: number;
     status?: string; price?: number; change_pct?: number;
   }): Promise<WatchlistRow | null> {
-    // Vérifie la session courante
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    console.log("[watchlistDB.add] authUser:", authUser?.id, "| userId param:", userId);
-
     const payload = { user_id: userId, ticker, ...display };
-    console.log("[watchlistDB.add] payload:", JSON.stringify(payload));
-
     const { data, error } = await supabase
       .from("watchlist_items")
       .upsert(payload, { onConflict: "user_id,ticker", ignoreDuplicates: false })
       .select()
       .single();
-
     if (error) {
-      console.error("[watchlistDB.add] ERROR:", error.message, "| code:", error.code, "| hint:", error.hint);
+      console.error("[watchlistDB.add]", error.message);
       return null;
     }
-    console.log("[watchlistDB.add] SUCCESS:", data?.id);
     return data as WatchlistRow;
   },
 
@@ -78,24 +70,16 @@ export const portfolioDB = {
   },
 
   async add(userId: string, ticker: string, qty: number, paidPrice: number): Promise<PortfolioRow | null> {
-    // Vérifie la session courante
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    console.log("[portfolioDB.add] authUser:", authUser?.id, "| userId param:", userId);
-
     const payload = { user_id: userId, ticker, qty, paid_price: paidPrice };
-    console.log("[portfolioDB.add] payload:", JSON.stringify(payload));
-
     const { data, error } = await supabase
       .from("portfolio_items")
       .upsert(payload, { onConflict: "user_id,ticker" })
       .select()
       .single();
-
     if (error) {
-      console.error("[portfolioDB.add] ERROR:", error.message, "| code:", error.code, "| hint:", error.hint);
+      console.error("[portfolioDB.add]", error.message);
       return null;
     }
-    console.log("[portfolioDB.add] SUCCESS:", data?.id);
     return data as PortfolioRow;
   },
 
