@@ -2,13 +2,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { auth } from "@/lib/auth";
 import { watchlistDB, preferencesDB } from "@/lib/db";
+import { SUPABASE_AVAILABLE } from "@/lib/supabase";
 import { useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
 import type { Asset } from "@/domain/types";
 import type { User } from "@supabase/supabase-js";
 
 export function useAuth() {
   const [user,    setUser]    = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // If Supabase isn't configured, skip auth check entirely
+  const [loading, setLoading] = useState(SUPABASE_AVAILABLE);
 
   const storeSetUser   = useUserStore(s => s.setUser);
   const storeReset     = useUserStore(s => s.reset);
@@ -60,6 +62,19 @@ export function useAuth() {
   }, [storeSetUser, setPrefsLoaded, setItems]);
 
   useEffect(() => {
+    if (!SUPABASE_AVAILABLE) {
+      storeReset();
+      clearWatchlist();
+      return;
+    }
+
+    // Timeout de sécurité — si Supabase ne répond pas en 6s, on continue comme invité
+    const timeout = setTimeout(() => {
+      storeReset();
+      clearWatchlist();
+      setLoading(false);
+    }, 6000);
+
     // Session initiale — reset si aucun utilisateur (localStorage peut être périmé)
     auth.getUser()
       .then(async u => {
@@ -72,7 +87,7 @@ export function useAuth() {
         storeReset();
         clearWatchlist();
       })
-      .finally(() => setLoading(false));
+      .finally(() => { clearTimeout(timeout); setLoading(false); });
 
     // Écoute les changements (login, logout, refresh token)
     const { data: { subscription } } = auth.onAuthStateChange(async (u: User | null) => {
