@@ -143,7 +143,7 @@ export default function App(){
   },[]);
 
   // ── Phase decision ─────────────────────────────────────────────
-  // Only fires after splash ends AND auth check is done
+  // Fires after splash minimum time AND auth check are both done
   useEffect(()=>{
     if(!splashDone||authLoading)return;
 
@@ -197,9 +197,9 @@ export default function App(){
       <div style={{minHeight:"100vh",background:T.bg,display:"flex",justifyContent:"center"}}>
         <div style={{width:"100%",maxWidth:430,minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
 
-          {/* ── Splash ─────────────────────────────────────────── */}
+          {/* ── Splash — stays until BOTH min time and auth check are done ── */}
           {phase==="splash"&&(
-            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,animation:splashOut?"fadeOut .35s ease forwards":"none"}}>
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,animation:(splashOut&&!authLoading)?"fadeOut .35s ease forwards":"none"}}>
               <div style={{animation:"fadeUp .5s ease forwards",opacity:0,textAlign:"center"}}>
                 <div style={{width:100,height:100,borderRadius:30,background:T.forest,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px",boxShadow:"0 24px 64px rgba(26,58,42,0.22)"}}>
                   <svg width="58" height="58" viewBox="0 0 24 24" fill="none">
