@@ -38,33 +38,41 @@ export function useAuth() {
       setPrefsLoaded(true);
     }
 
-    const wlItems = await watchlistDB.list(u.id);
-    if (wlItems.length) {
-      const assets: Asset[] = wlItems.map(r => ({
-        ticker: r.ticker, name: r.name ?? r.ticker, type: "stock" as const,
-        price: r.price ?? 0, change: r.change_pct ?? 0, score: r.score ?? 0,
-        status: (r.status ?? "halal") as any, esgScore: 70,
-        ratioDebt: 0, ratioRevHaram: 0, ratioCash: 0,
-        divYield: 0, divAnnual: 0, divHaramPct: 0, beta: 1,
-        sector: r.sector ?? "N/A", country: "🌍", mktCap: "N/A",
-        volatility: "Modérée" as const, scoreHistory: [],
-        periods: { "1D":[], "1S":[], "1M":[], "1A":[] },
-        opportunities: false, newlyHalal: false, whyHalal: [],
-      }));
-      const ids: Record<string, string> = {};
-      wlItems.forEach(r => { ids[r.ticker] = r.id; });
-      setItems(assets, ids);
-    }
+    try {
+      const wlItems = await watchlistDB.list(u.id);
+      if (wlItems.length) {
+        const assets: Asset[] = wlItems.map(r => ({
+          ticker: r.ticker, name: r.name ?? r.ticker, type: "stock" as const,
+          price: r.price ?? 0, change: r.change_pct ?? 0, score: r.score ?? 0,
+          status: (r.status ?? "halal") as any, esgScore: 70,
+          ratioDebt: 0, ratioRevHaram: 0, ratioCash: 0,
+          divYield: 0, divAnnual: 0, divHaramPct: 0, beta: 1,
+          sector: r.sector ?? "N/A", country: "🌍", mktCap: "N/A",
+          volatility: "Modérée" as const, scoreHistory: [],
+          periods: { "1D":[], "1S":[], "1M":[], "1A":[] },
+          opportunities: false, newlyHalal: false, whyHalal: [],
+        }));
+        const ids: Record<string, string> = {};
+        wlItems.forEach(r => { ids[r.ticker] = r.id; });
+        setItems(assets, ids);
+      }
+    } catch { /* watchlist fetch failure is non-critical */ }
   }, [storeSetUser, setPrefsLoaded, setItems]);
 
   useEffect(() => {
     // Session initiale — reset si aucun utilisateur (localStorage peut être périmé)
-    auth.getUser().then(async u => {
-      setUser(u);
-      if (u) await syncUserData(u);
-      else { storeReset(); clearWatchlist(); }
-      setLoading(false);
-    });
+    auth.getUser()
+      .then(async u => {
+        setUser(u);
+        if (u) await syncUserData(u);
+        else { storeReset(); clearWatchlist(); }
+      })
+      .catch(() => {
+        // Supabase non configuré ou erreur réseau — traiter comme non connecté
+        storeReset();
+        clearWatchlist();
+      })
+      .finally(() => setLoading(false));
 
     // Écoute les changements (login, logout, refresh token)
     const { data: { subscription } } = auth.onAuthStateChange(async (u: User | null) => {
