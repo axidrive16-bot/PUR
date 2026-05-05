@@ -52,6 +52,9 @@ input, button, textarea { font-family: 'Cabinet Grotesk', system-ui, sans-serif 
 @keyframes blink     { from { opacity:.2 } to { opacity:1 } }
 @keyframes shimmer   { 0% { background-position:200% 0 } 100% { background-position:-200% 0 } }
 @keyframes spin      { to { transform:rotate(360deg) } }
+@keyframes float     { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-5px) } }
+@keyframes floatAlt  { 0%,100% { transform:translateY(-3px) } 50% { transform:translateY(3px) } }
+@keyframes slideUp   { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
 
 button:focus-visible, input:focus-visible { outline: 2px solid var(--pur-emerald); outline-offset: 2px; }
 button:active { transform: scale(.97); }

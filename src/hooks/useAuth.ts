@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { auth } from "@/lib/auth";
-import { watchlistDB } from "@/lib/db";
+import { watchlistDB, preferencesDB } from "@/lib/db";
 import { useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
 import type { Asset } from "@/domain/types";
 import type { User } from "@supabase/supabase-js";
@@ -12,12 +12,31 @@ export function useAuth() {
 
   const storeSetUser   = useUserStore(s => s.setUser);
   const storeReset     = useUserStore(s => s.reset);
+  const setPrefsLoaded = useUserStore(s => s.setPrefsLoaded);
   const setItems       = useWatchlistStore(s => s.setItems);
   const clearWatchlist = useWatchlistStore(s => s.clear);
 
-  // Sync watchlist from Supabase → store at login
+  // Sync preferences + watchlist from Supabase → store at login
   const syncUserData = useCallback(async (u: User) => {
     storeSetUser({ id: u.id, email: u.email ?? null });
+
+    // Fetch onboarding preferences (non-blocking — failure is safe)
+    try {
+      const prefs = await preferencesDB.get(u.id);
+      if (prefs) {
+        storeSetUser({
+          onboardingCompleted: prefs.onboarding_completed,
+          preferences: {
+            sectors:          prefs.preferred_sectors  ?? [],
+            investmentStyles: prefs.investment_styles  ?? [],
+            investmentGoals:  prefs.investment_goals   ?? [],
+            riskProfile:      prefs.risk_profile       ?? null,
+          },
+        });
+      }
+    } catch { /* network failure — leave defaults */ } finally {
+      setPrefsLoaded(true);
+    }
 
     const wlItems = await watchlistDB.list(u.id);
     if (wlItems.length) {
@@ -36,7 +55,7 @@ export function useAuth() {
       wlItems.forEach(r => { ids[r.ticker] = r.id; });
       setItems(assets, ids);
     }
-  }, [storeSetUser, setItems]);
+  }, [storeSetUser, setPrefsLoaded, setItems]);
 
   useEffect(() => {
     // Session initiale — reset si aucun utilisateur (localStorage peut être périmé)

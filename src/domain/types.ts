@@ -79,3 +79,10 @@ export interface StockApiResponse {
   history: Record<ChartPeriod, ChartPoint[]>;
   ratios:  AAOIFIRatios[] | null;
 }
+
+export interface UserPreferences {
+  sectors:          string[];
+  investmentStyles: string[];
+  investmentGoals:  string[];
+  riskProfile:      string | null;
+}

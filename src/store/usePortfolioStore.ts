@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import { computePortfolioMetrics } from "@/domain/aaoifi";
-import type { PortfolioItem, PortfolioMetrics, Asset } from "@/domain/types";
+import type { PortfolioItem, PortfolioMetrics, Asset, UserPreferences } from "@/domain/types";
 
 // ── Portfolio store ───────────────────────────────────────────────
 interface PortfolioState {
@@ -115,30 +115,49 @@ export const useWatchlistStore = create<WatchlistState>()(
 
 // ── User store ────────────────────────────────────────────────────
 interface UserState {
-  id:          string;
-  email:       string | null;
-  isPremium:   boolean;
-  screenings:  number;
-  isValidated: boolean;
-  setIsPremium:  (v: boolean) => void;
-  incScreenings: () => void;
-  setUser:       (u: Partial<UserState>) => void;
-  reset:         () => void;
+  id:                  string;
+  email:               string | null;
+  isPremium:           boolean;
+  screenings:          number;
+  isValidated:         boolean;
+  onboardingCompleted: boolean;
+  preferences:         UserPreferences | null;
+  /** Runtime flag — reset on every session, not persisted */
+  prefsLoaded:         boolean;
+  setIsPremium:           (v: boolean) => void;
+  incScreenings:          () => void;
+  setUser:                (u: Partial<UserState>) => void;
+  setOnboardingCompleted: (v: boolean) => void;
+  setPreferences:         (p: UserPreferences | null) => void;
+  setPrefsLoaded:         (v: boolean) => void;
+  reset:                  () => void;
 }
 
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
       id:"guest", email:null, isPremium:false, screenings:0, isValidated:false,
-      setIsPremium:  (v) => set({ isPremium:v }),
-      incScreenings: ()  => set(s => ({ screenings: s.screenings + 1 })),
-      setUser:       (u) => set(s => ({ ...s, ...u })),
-      reset:         ()  => set({ id:"guest", email:null, isPremium:false, screenings:0, isValidated:false }),
+      onboardingCompleted: false,
+      preferences: null,
+      prefsLoaded: false,
+      setIsPremium:           (v) => set({ isPremium:v }),
+      incScreenings:          ()  => set(s => ({ screenings: s.screenings + 1 })),
+      setUser:                (u) => set(s => ({ ...s, ...u })),
+      setOnboardingCompleted: (v) => set({ onboardingCompleted: v }),
+      setPreferences:         (p) => set({ preferences: p }),
+      setPrefsLoaded:         (v) => set({ prefsLoaded: v }),
+      reset: () => set({
+        id:"guest", email:null, isPremium:false, screenings:0, isValidated:false,
+        onboardingCompleted:false, preferences:null, prefsLoaded:false,
+      }),
     }),
     {
       name: "hs-user",
-      // isPremium est toujours revalidé côté serveur — localStorage = cache d'affichage uniquement
-      partialize: s => ({ id:s.id, email:s.email, screenings:s.screenings }),
+      // isPremium: always revalidated server-side; prefsLoaded: session-only
+      partialize: s => ({
+        id:s.id, email:s.email, screenings:s.screenings,
+        onboardingCompleted:s.onboardingCompleted, preferences:s.preferences,
+      }),
     }
   )
 );

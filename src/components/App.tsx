@@ -9,13 +9,18 @@ import type { PortfolioItem } from "@/domain/types";
 import { T, EUR_USD, CurrCtx } from "@/components/ui/tokens";
 import { ToastProvider, useToast } from "@/components/ui/Toast";
 import { StockCard } from "@/components/app/StockCard";
+import { AuthScreen } from "@/components/app/AuthScreen";
+import { OnboardingScreen } from "@/components/app/OnboardingScreen";
 import { HomeScreen } from "@/components/app/HomeScreen";
 import { ScreeningScreen } from "@/components/app/ScreeningScreen";
 import { PortfolioScreen } from "@/components/app/PortfolioScreen";
 import { WatchlistScreen } from "@/components/app/WatchlistScreen";
 import { ProfileScreen } from "@/components/app/ProfileScreen";
 import { MethodologyScreen } from "@/components/app/MethodologyScreen";
+import { PortfolioBuilderScreen } from "@/features/portfolio-builder/PortfolioBuilderScreen";
 import LearnScreen from "@/components/LearnScreen";
+
+type Phase = "splash" | "auth" | "onboarding" | "app";
 
 // ── Navigation tabs ───────────────────────────────────────────────
 const TABS=[
@@ -58,7 +63,7 @@ const TABS=[
     )},
 ];
 
-// ── Checkout redirect toast (must live inside ToastProvider) ─────
+// ── Checkout redirect toast ───────────────────────────────────────
 function CheckoutToast(){
   const toast=useToast();
   useEffect(()=>{
@@ -66,6 +71,7 @@ function CheckoutToast(){
     const p=new URLSearchParams(window.location.search);
     const status=p.get("checkout");
     if(!status)return;
+    window.history.replaceState({},"",window.location.pathname);
     if(status==="success") toast("Bienvenue Premium ! Votre abonnement est actif.","success");
     if(status==="cancelled") toast("Paiement annulé — vous pouvez réessayer quand vous voulez.","info");
   },[toast]);
@@ -74,24 +80,30 @@ function CheckoutToast(){
 
 // ── App Root ──────────────────────────────────────────────────────
 export default function App(){
-  const[phase,setPhase]=useState<"splash"|"app">("splash");
-  const[splashOut,setSplashOut]=useState(false);
-  const[tab,setTab]=useState("home");
-  const[reportTicker,setReportTicker]=useState<string|null>(null);
-  const pfCtx=usePortfolios();
+  const [phase,setPhase]       = useState<Phase>("splash");
+  const [splashOut,setSplashOut]= useState(false);
+  const [splashDone,setSplashDone]=useState(false);
+  const [tab,setTab]           = useState("home");
+  const [reportTicker,setReportTicker]=useState<string|null>(null);
 
-  useAuth();
+  const pfCtx=usePortfolios();
+  const { loading: authLoading } = useAuth();
+
+  const userId             = useUserStore(s=>s.id);
+  const setIsPremium       = useUserStore(s=>s.setIsPremium);
+  const onboardingCompleted= useUserStore(s=>s.onboardingCompleted);
+  const prefsLoaded        = useUserStore(s=>s.prefsLoaded);
+
   const handleSignOut=useCallback(()=>{
     useUserStore.getState().reset();
     useWatchlistStore.getState().clear();
     pfCtx.syncFromDB([]);
     setTab("home");
+    setPhase("auth");
     auth.signOut().catch(()=>{});
   },[pfCtx]);
 
-  const userId=useUserStore(s=>s.id);
-  const setIsPremium=useUserStore(s=>s.setIsPremium);
-
+  // ── Subscription validation ────────────────────────────────────
   useEffect(()=>{
     if(userId==="guest")return;
     auth.getSession().then(session=>{
@@ -103,6 +115,7 @@ export default function App(){
     });
   },[userId,setIsPremium]);
 
+  // ── Portfolio DB sync ──────────────────────────────────────────
   useEffect(()=>{
     if(userId==="guest"){pfCtx.syncFromDB([]);return;}
     portfolioDB.list(userId).then(rows=>{
@@ -122,28 +135,42 @@ export default function App(){
     }).catch(()=>{});
   },[userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Splash timing ──────────────────────────────────────────────
   useEffect(()=>{
     const t1=setTimeout(()=>setSplashOut(true),1600);
-    const t2=setTimeout(()=>setPhase("app"),1950);
+    const t2=setTimeout(()=>setSplashDone(true),1950);
     return()=>{clearTimeout(t1);clearTimeout(t2);};
   },[]);
 
-  const openReport=useCallback((t:string)=>setReportTicker(t),[]);
-  const closeReport=useCallback(()=>setReportTicker(null),[]);
+  // ── Phase decision ─────────────────────────────────────────────
+  // Only fires after splash ends AND auth check is done
+  useEffect(()=>{
+    if(!splashDone||authLoading)return;
 
-  // Handle Stripe redirect back to /app?checkout=success|cancelled
+    if(userId==="guest"){
+      setPhase("auth");
+      return;
+    }
+    // Logged in: if already completed onboarding (from localStorage), skip to app immediately
+    if(onboardingCompleted){
+      setPhase("app");
+      return;
+    }
+    // Wait for prefs to be fetched (first login on device)
+    if(!prefsLoaded)return;
+    // Prefs loaded, onboarding not done → show onboarding
+    setPhase("onboarding");
+  },[splashDone,authLoading,userId,onboardingCompleted,prefsLoaded]);
+
+  // ── Stripe return URL handling ─────────────────────────────────
   useEffect(()=>{
     if(typeof window==="undefined")return;
     const p=new URLSearchParams(window.location.search);
     const status=p.get("checkout");
     if(!status)return;
-    // Strip the param from the URL without a reload
-    const clean=window.location.pathname;
-    window.history.replaceState({},"",clean);
-    // Delay until ToastProvider is mounted (after splash)
+    window.history.replaceState({},"",window.location.pathname);
     if(status==="success"){
       setTimeout(()=>{
-        // Refresh premium status
         auth.getSession().then(session=>{
           if(!session)return;
           fetch("/api/subscription/validate",{headers:{Authorization:`Bearer ${session.access_token}`}})
@@ -154,6 +181,9 @@ export default function App(){
       },2500);
     }
   },[setIsPremium]);
+
+  const openReport=useCallback((t:string)=>setReportTicker(t),[]);
+  const closeReport=useCallback(()=>setReportTicker(null),[]);
 
   const[cur,setCurState]=useState<"USD"|"EUR">(()=>{try{return(localStorage.getItem("pur_currency") as "USD"|"EUR")||"USD";}catch{return "USD";}});
   const setCur=useCallback((c:"USD"|"EUR")=>{setCurState(c);try{localStorage.setItem("pur_currency",c);}catch{};},[]);
@@ -167,6 +197,7 @@ export default function App(){
       <div style={{minHeight:"100vh",background:T.bg,display:"flex",justifyContent:"center"}}>
         <div style={{width:"100%",maxWidth:430,minHeight:"100vh",background:T.bg,display:"flex",flexDirection:"column",overflow:"hidden",position:"relative"}}>
 
+          {/* ── Splash ─────────────────────────────────────────── */}
           {phase==="splash"&&(
             <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,animation:splashOut?"fadeOut .35s ease forwards":"none"}}>
               <div style={{animation:"fadeUp .5s ease forwards",opacity:0,textAlign:"center"}}>
@@ -179,7 +210,7 @@ export default function App(){
                   </svg>
                 </div>
                 <div style={{fontFamily:"'Cabinet Grotesk',sans-serif",fontSize:40,fontWeight:800,color:T.text,letterSpacing:"-1.5px",lineHeight:1,marginBottom:8}}>PUR</div>
-                <div style={{fontSize:14,color:T.textSub,letterSpacing:"0.02em",lineHeight:1}}>The new way to invest</div>
+                <div style={{fontSize:14,color:T.textSub,letterSpacing:"0.02em"}}>L'investissement sans concession</div>
               </div>
               <div style={{display:"flex",gap:7,animation:"fadeUp .5s .3s ease forwards",opacity:0}}>
                 {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:2.5,background:T.emerald,animation:`blink 1.2s ${i*.2}s ease-in-out infinite alternate`}}/>)}
@@ -187,6 +218,17 @@ export default function App(){
             </div>
           )}
 
+          {/* ── Auth ───────────────────────────────────────────── */}
+          {phase==="auth"&&(
+            <AuthScreen onGuestContinue={()=>setPhase("app")}/>
+          )}
+
+          {/* ── Onboarding ─────────────────────────────────────── */}
+          {phase==="onboarding"&&(
+            <OnboardingScreen onComplete={()=>setPhase("app")}/>
+          )}
+
+          {/* ── App ────────────────────────────────────────────── */}
           {phase==="app"&&<>
             {reportTicker&&(
               <div style={{position:"fixed",inset:0,background:T.bg,zIndex:200,display:"flex",flexDirection:"column",maxWidth:430,margin:"0 auto",overflowY:"auto"}}>
@@ -200,23 +242,27 @@ export default function App(){
               </div>
             )}
             {!reportTicker&&<>
-              {tab==="home"        &&<HomeScreen      setTab={setTab} openReport={openReport}/>}
-              {tab==="screen"      &&<ScreeningScreen openReport={openReport}/>}
-              {tab==="portfolio"   &&<PortfolioScreen setTab={setTab}/>}
-              {tab==="watchlist"   &&<WatchlistScreen/>}
-              {tab==="learn"       &&<LearnScreen/>}
-              {tab==="profile"     &&<ProfileScreen setTab={setTab} onSignOut={handleSignOut}/>}
-              {tab==="methodology" &&<MethodologyScreen onBack={()=>setTab("profile")}/>}
+              {tab==="home"             &&<HomeScreen       setTab={setTab} openReport={openReport}/>}
+              {tab==="screen"           &&<ScreeningScreen  openReport={openReport}/>}
+              {tab==="portfolio"        &&<PortfolioScreen  setTab={setTab}/>}
+              {tab==="watchlist"        &&<WatchlistScreen/>}
+              {tab==="learn"            &&<LearnScreen/>}
+              {tab==="profile"          &&<ProfileScreen    setTab={setTab} onSignOut={handleSignOut}/>}
+              {tab==="methodology"      &&<MethodologyScreen onBack={()=>setTab("profile")}/>}
+              {tab==="portfolio-builder"&&<PortfolioBuilderScreen onBack={()=>setTab("home")} openReport={openReport}/>}
 
-              <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#FFFFFF",borderTop:`1px solid rgba(0,0,0,0.07)`,display:"flex",padding:"8px 0 24px",zIndex:100}}>
-                {TABS.map(t=>(
-                  <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"5px 0",fontFamily:"inherit"}}>
-                    {t.icon(tab===t.id)}
-                    <span style={{fontSize:9,fontWeight:tab===t.id?700:400,color:tab===t.id?T.forest:T.textMuted,letterSpacing:"0.02em"}}>{t.label}</span>
-                    {tab===t.id&&<div style={{width:14,height:2,borderRadius:1,background:T.forest}}/>}
-                  </button>
-                ))}
-              </nav>
+              {/* Only show nav for main tabs (not sub-screens) */}
+              {!["portfolio-builder","methodology"].includes(tab)&&(
+                <nav style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#FFFFFF",borderTop:`1px solid rgba(0,0,0,0.07)`,display:"flex",padding:"8px 0 24px",zIndex:100}}>
+                  {TABS.map(t=>(
+                    <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"5px 0",fontFamily:"inherit"}}>
+                      {t.icon(tab===t.id)}
+                      <span style={{fontSize:9,fontWeight:tab===t.id?700:400,color:tab===t.id?T.forest:T.textMuted,letterSpacing:"0.02em"}}>{t.label}</span>
+                      {tab===t.id&&<div style={{width:14,height:2,borderRadius:1,background:T.forest}}/>}
+                    </button>
+                  ))}
+                </nav>
+              )}
             </>}
           </>}
         </div>

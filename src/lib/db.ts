@@ -114,6 +114,46 @@ export const profileDB = {
   },
 };
 
+// ── Preferences / Onboarding ─────────────────────────────────────
+export interface PreferencesRow {
+  user_id:              string;
+  onboarding_completed: boolean;
+  preferred_sectors:    string[];
+  investment_styles:    string[];
+  investment_goals:     string[];
+  risk_profile:         string | null;
+  created_at:           string;
+  updated_at:           string;
+}
+
+export const preferencesDB = {
+  async get(userId: string): Promise<PreferencesRow | null> {
+    const { data, error } = await supabase
+      .from("user_preferences")
+      .select("*")
+      .eq("user_id", userId)
+      .single();
+    if (error && error.code !== "PGRST116") console.error("[preferencesDB.get]", error.message);
+    return (data ?? null) as PreferencesRow | null;
+  },
+
+  async save(userId: string, payload: {
+    onboarding_completed: boolean;
+    preferred_sectors:    string[];
+    investment_styles:    string[];
+    investment_goals:     string[];
+    risk_profile:         string | null;
+  }): Promise<void> {
+    const { error } = await supabase
+      .from("user_preferences")
+      .upsert(
+        { user_id: userId, ...payload, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    if (error) console.error("[preferencesDB.save]", error.message);
+  },
+};
+
 // ── Purification ──────────────────────────────────────────────────
 export const purificationDB = {
   async add(userId: string, amount: number): Promise<void> {
