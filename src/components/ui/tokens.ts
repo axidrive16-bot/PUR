@@ -27,7 +27,8 @@ export const CurrCtx = createContext<{
 export const useCur = () => useContext(CurrCtx);
 
 // ── Status map ────────────────────────────────────────────────────
-export const STATUS: any = {
+type StatusStyle = { color: string; bg: string; label: string; icon: string };
+export const STATUS: Record<string, StatusStyle> = {
   "conforme":     { color:"#208640", bg:"#EAF3DE", label:"Conforme",      icon:"✅" },
   "douteux":      { color:"#B07D2A", bg:"#FDF3E0", label:"Douteux",       icon:"⚠️" },
   "non conforme": { color:"#A32D2D", bg:"#FCEBEB", label:"Non conforme",  icon:"❌" },
@@ -49,16 +50,23 @@ export function scoreInfo(score: number) {
 }
 
 // ── Chart point generators ────────────────────────────────────────
-export function genPts(base: number, vol: number, n: number, tr: number): ChartPoint[] {
+const DAY = 86400000;
+export function genPts(base: number, vol: number, n: number, tr: number, span: number): ChartPoint[] {
   let p = base*(1-tr*.5); const now = Date.now();
+  const step = n > 1 ? span / (n - 1) : span;
   const pts: ChartPoint[] = Array.from({length:n}, (_,i) => {
     p *= (1+(Math.random()-.48)*vol+tr/n);
-    return { t:now-(n-i)*(86400000/n)*n, v:parseFloat(p.toFixed(2)) };
+    return { t: now - span + i * step, v: parseFloat(p.toFixed(2)) };
   });
   pts[pts.length-1].v = base; return pts;
 }
 export function mkP(b:number,v:number,t:number): Record<ChartPeriod,ChartPoint[]> {
-  return {"1D":genPts(b,v*.3,48,t*.02),"1S":genPts(b,v*.5,56,t*.05),"1M":genPts(b,v,60,t*.15),"1A":genPts(b,v*1.5,52,t)};
+  return {
+    "1D": genPts(b, v*.3, 48, t*.02, DAY),
+    "1S": genPts(b, v*.5, 56, t*.05, 7*DAY),
+    "1M": genPts(b, v,   60, t*.15, 30*DAY),
+    "1A": genPts(b, v*1.5, 52, t,   365*DAY),
+  };
 }
 
 // ── Base Styles ───────────────────────────────────────────────────
