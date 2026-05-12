@@ -1,12 +1,12 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useWatchlistStore, useUserStore } from "@/store/usePortfolioStore";
 import { useGamificationStore } from "@/store/useGamificationStore";
 import { watchlistDB } from "@/lib/db";
 import { calcPurification } from "@/domain/aaoifi";
 import { useStock } from "@/hooks/useStock";
 import type { ChartPeriod } from "@/domain/types";
-import { T, BS, STATUS, scoreInfo, useCur, mkP } from "@/components/ui/tokens";
+import { T, BS, STATUS, scoreInfo, useCur } from "@/components/ui/tokens";
 import { Sk } from "@/components/ui/Modal";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { Chart } from "@/components/ui/Chart";
@@ -20,6 +20,7 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
   const{fmtP,cur,setCur}=useCur();
   const{toggle:wlToggle,inList:inWl}=useWatchlistStore();
   const isPremium=useUserStore(s=>s.isPremium);
+  const setUser=useUserStore(s=>s.setUser);
   const userId=useUserStore(s=>s.id);
   const[period,setPeriod]=useState<ChartPeriod>("1M");
   const[showWhy,setShowWhy]=useState(false);
@@ -28,11 +29,20 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
   const{data,isLoading,error}=useStock(ticker,period);
   const asset=data?.asset;
 
+  useEffect(()=>{
+    if(data?.usage){
+      setUser({
+        isPremium:data.usage.isPremium,
+        screenings:data.usage.screeningsToday,
+        isValidated:true,
+      });
+    }
+  },[data?.usage,setUser]);
+
   const enriched=useMemo(()=>{
     if(!asset)return{"1D":[],"1S":[],"1M":[],"1A":[]};
     const hist=data?.history?.[period]??[];
-    if(hist.length>0)return{...asset.periods,[period]:hist};
-    return mkP(asset.price,(asset.beta??1)*.015,(asset.change??0)>0?.8:-.3);
+    return {...asset.periods,[period]:hist};
   },[asset,data,period]);
 
   if(isLoading)return(
@@ -40,10 +50,21 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
       <Sk h={22} w="55%" r={4}/><div style={{marginTop:8}}><Sk h={14} w="35%" r={4}/></div><div style={{marginTop:14}}><Sk h={110} r={8}/></div>
     </div>
   );
-  if(error||!asset)return<div style={{background:T.redBg,border:`1px solid ${T.red}22`,borderRadius:16,padding:18,color:T.red,fontSize:13}}>Ticker introuvable : {ticker}</div>;
+  if(error){
+    const quotaExceeded = error.status === 429;
+    const unauthorized = error.status === 401;
+    return(
+      <div style={{background:quotaExceeded?T.amberBg:T.redBg,border:`1px solid ${quotaExceeded?T.amber:T.red}22`,borderRadius:16,padding:18,color:quotaExceeded?T.amber:T.red,fontSize:13,lineHeight:1.6}}>
+        <strong>{quotaExceeded?"Limite quotidienne atteinte":unauthorized?"Connexion requise":"Analyse indisponible"}</strong>
+        <p style={{marginTop:6,color:quotaExceeded?T.amber:T.red}}>{error.message}</p>
+        {quotaExceeded&&<button onClick={()=>setShowUp(true)} style={{...BS.btnPrimary,marginTop:12}}>Passer à Premium</button>}
+        {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
+      </div>
+    );
+  }
+  if(!asset)return<div style={{background:T.redBg,border:`1px solid ${T.red}22`,borderRadius:16,padding:18,color:T.red,fontSize:13}}>Ticker introuvable : {ticker}</div>;
 
   const cfg=STATUS[asset.status]??STATUS["conforme"]??STATUS.halal;
-  const si=scoreInfo(asset.score);
   const isInPf=pfCtx.inActive(ticker);
   const currentQty=pfCtx.getQty(ticker);
   const isWatched=inWl(ticker);
@@ -73,7 +94,7 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
           <div>
             <div style={{fontFamily:"'DM Serif Display',serif",fontSize:26,color:T.text,lineHeight:1}}>{fmtP(asset.price)}</div>
-            <div style={{fontSize:12,color:cc,fontWeight:700,marginTop:3}}>{(asset.change??0)>=0?"+":""}{asset.change}% aujourd'hui</div>
+            <div style={{fontSize:12,color:cc,fontWeight:700,marginTop:3}}>{(asset.change??0)>=0?"+":""}{asset.change}% aujourd’hui</div>
           </div>
           <button onClick={()=>setCur(cur==="USD"?"EUR":"USD")} style={{height:26,padding:"0 10px",background:T.surface2,border:`1px solid ${T.border}`,borderRadius:8,fontSize:11,fontWeight:700,color:T.textSub,cursor:"pointer",fontFamily:"inherit",flexShrink:0,marginTop:3}}>
             {cur==="USD"?"$ USD":"€ EUR"}
@@ -85,21 +106,21 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
         <Chart data={currentPts} color={cc} height={120} showYAxis={true} label={`Cours · ${period}`}/>
         <div style={{background:T.surface2,borderRadius:12,padding:14,marginBottom:13,marginTop:14}}>
           <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textMuted,marginBottom:12}}>Analyse de conformité</p>
-          <RatioBar label="Dette / actifs" value={asset.ratioDebt} max={33} detail={`Mesure l'endettement de ${ticker}. Seuil maximum : 33% des actifs totaux.`}/>
-          <RatioBar label="Revenus non conformes" value={asset.ratioRevHaram} max={5} detail={`Part des revenus illicites. Seuil maximum : 5% du chiffre d'affaires.`}/>
+          <RatioBar label="Dette / actifs" value={asset.ratioDebt} max={33} detail={`Mesure l’endettement de ${ticker}. Seuil maximum : 33% des actifs totaux.`}/>
+          <RatioBar label="Revenus non conformes" value={asset.ratioRevHaram} max={5} detail={`Part des revenus illicites. Seuil maximum : 5% du chiffre d’affaires.`}/>
           <RatioBar label="Liquidités / actifs" value={asset.ratioCash} max={33} detail={`Instruments monétaires sensibles. Seuil maximum : 33% des actifs.`}/>
         </div>
         {isPremium&&asset.scoreHistory.length>0&&(
           <div style={{background:T.surface2,borderRadius:12,padding:14,marginBottom:13}}>
             <p style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textMuted,marginBottom:10}}>Évolution du score — {asset.scoreHistory.length} trimestres</p>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",height:40}}>
-              {(asset.scoreHistory as any[]).map((v:number,i:number)=>{const si2=scoreInfo(v);return<div key={i} style={{height:20,width:4,background:si2.color,borderRadius:2}}/>;})}</div>
+              {asset.scoreHistory.map((v,i)=>{const si2=scoreInfo(v);return<div key={i} style={{height:20,width:4,background:si2.color,borderRadius:2}}/>;})}</div>
           </div>
         )}
         {!isPremium&&<button onClick={()=>setShowUp(true)} style={{width:"100%",background:T.surface2,border:`1px solid ${T.amber}28`,borderRadius:12,padding:"10px 14px",marginBottom:13,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer",fontFamily:"inherit"}}><div><div style={{fontSize:12,fontWeight:700,color:T.amber,marginBottom:1}}>Historique du score sur 2 ans</div><div style={{fontSize:11,color:T.textMuted}}>Évolution trimestrielle · Premium</div></div><span style={{fontSize:12,color:T.amber,fontWeight:700}}>Voir →</span></button>}
         <div style={{background:T.surface2,borderRadius:12,overflow:"hidden",marginBottom:13}}>
           <button onClick={()=>setShowWhy(w=>!w)} style={{width:"100%",padding:"11px 14px",display:"flex",justifyContent:"space-between",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit"}}><span style={{fontSize:13,fontWeight:700,color:T.text}}>Pourquoi {asset.status==="halal"?"conforme":asset.status==="douteux"?"à surveiller":"non conforme"} ?</span><span style={{color:T.textMuted,fontSize:12}}>{showWhy?"▲":"▼"}</span></button>
-          {showWhy&&<div style={{padding:"0 14px 14px"}}>{(asset.whyHalal as any[]).map((w:any,i:number)=><div key={i} style={{display:"flex",gap:8,marginBottom:10}}><div style={{width:16,height:16,borderRadius:4,background:w.ok?T.greenBg:T.redBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:w.ok?T.green:T.red,fontWeight:800,flexShrink:0,marginTop:1}}>{w.ok?"✓":"✕"}</div><div><p style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{w.label}</p><p style={{fontSize:11,color:T.textSub,lineHeight:1.6}}>{w.detail}</p></div></div>)}</div>}
+          {showWhy&&<div style={{padding:"0 14px 14px"}}>{asset.whyHalal.map((w,i)=><div key={i} style={{display:"flex",gap:8,marginBottom:10}}><div style={{width:16,height:16,borderRadius:4,background:w.ok?T.greenBg:T.redBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:w.ok?T.green:T.red,fontWeight:800,flexShrink:0,marginTop:1}}>{w.ok?"✓":"✕"}</div><div><p style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:2}}>{w.label}</p><p style={{fontSize:11,color:T.textSub,lineHeight:1.6}}>{w.detail}</p></div></div>)}</div>}
         </div>
         {(asset.divAnnual??0)>0&&<div style={{background:T.goldLight,border:`1px solid ${T.gold}30`,borderRadius:12,padding:14,marginBottom:14}}><p style={{fontSize:12,fontWeight:700,color:T.amber,marginBottom:7}}>Purification des dividendes</p><div style={{display:"flex",gap:16}}><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Dividende/an</p><p style={{fontSize:13,fontWeight:700,color:T.text}}>{asset.divAnnual}$</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Part à purifier</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{asset.divHaramPct}%</p></div><div><p style={{fontSize:10,color:T.textMuted,marginBottom:2}}>Montant</p><p style={{fontSize:13,fontWeight:700,color:T.amber}}>{calcPurification(asset.divAnnual??0,asset.divHaramPct??0).toFixed(3)}$</p></div></div></div>}
         <FundamentalsBlock asset={asset} ticker={ticker} isPremium={isPremium} onUpgrade={()=>setShowUp(true)}/>

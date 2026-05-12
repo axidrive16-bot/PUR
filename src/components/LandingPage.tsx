@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { AnimatedHero } from "@/components/ui/animated-hero";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import ShaderBackground from "@/components/ui/shader-background";
+import { SUB } from "@/components/ui/tokens";
 
 // ── PUR Logo ──────────────────────────────────────────────────────────
 // SVG has black paths; CSS filter shifts it to forest green (default) or white (light).
@@ -650,7 +651,7 @@ export default function LandingPage() {
             <AnimatedGroup preset="blur-slide" stagger={0.08} style={{ textAlign: "center", marginBottom: 40 }}>
               <Eyebrow text="Tarification" />
               <h2 style={{ fontFamily: "'DM Serif Display',serif", fontSize: "clamp(28px,4vw,42px)", fontWeight: 400, color: C.text }}>Simple et transparent</h2>
-              <p style={{ fontSize: 15, color: C.textSub, marginTop: 12 }}>14 jours d'essai gratuit. Sans engagement.</p>
+              <p style={{ fontSize: 15, color: C.textSub, marginTop: 12 }}>{SUB.TRIAL} jours d’essai gratuit. Sans engagement.</p>
             </AnimatedGroup>
 
             {/* Billing toggle */}
@@ -682,7 +683,7 @@ export default function LandingPage() {
                     { ok: true, label: "Alertes de conformité" },
                     { ok: true, label: "Analyse fondamentale complète" },
                   ]}
-                  cta="Essai gratuit 14 jours"
+                  cta={`Essai gratuit ${SUB.TRIAL} jours`}
                   dark
                   onCta={toApp}
                 />
@@ -886,7 +887,7 @@ export default function LandingPage() {
                 Rejoignez des milliers d'investisseurs musulmans qui font confiance à PUR pour leurs décisions financières.
               </p>
               <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                <Btn label="Essai gratuit 7 jours" onClick={toApp} variant="primary" />
+                <Btn label={`Essai gratuit ${SUB.TRIAL} jours`} onClick={toApp} variant="primary" />
                 <Btn label="Voir les tarifs" onClick={() => document.getElementById("tarifs")?.scrollIntoView({ behavior: "smooth" })} variant="outline-dark" />
               </div>
               <p style={{ fontSize: 12, color: "rgba(255,255,255,.35)", marginTop: 18 }}>Aucune carte requise · Annulation à tout moment</p>

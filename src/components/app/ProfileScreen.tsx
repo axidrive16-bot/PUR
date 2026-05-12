@@ -4,6 +4,7 @@ import { useUserStore } from "@/store/usePortfolioStore";
 import { T, BS, SUB } from "@/components/ui/tokens";
 import { PurLogo } from "@/components/ui/PurLogo";
 import { useToast } from "@/components/ui/Toast";
+import { auth } from "@/lib/auth";
 import { UpgradeModal } from "./UpgradeModal";
 import { AuthModal } from "./AuthModal";
 import { LegalModal } from "./LegalModal";
@@ -16,17 +17,32 @@ const PROFILE_FAQ=[
   {q:"C'est quoi la Zakat ?",a:"La Zakat est un prélèvement annuel de 2,5 % sur les actifs éligibles au-delà d'un certain seuil. PUR estime le montant selon la valeur de votre portefeuille. Consultez un érudit qualifié pour une décision précise."},
   {q:"Que faire si mon action devient non conforme ?",a:"Si une action passe sous le seuil, PUR vous alerte dans la Watchlist. Vous décidez ensuite de conserver, réduire ou vendre. PUR ne donne aucun conseil d'investissement : chaque décision vous appartient entièrement."},
   {q:"PUR donne-t-il des conseils financiers ?",a:"Non. PUR est strictement un outil d'information et d'analyse. Les scores ne constituent en aucun cas des conseils en investissement. Consultez un conseiller financier agréé pour des conseils adaptés à votre situation."},
-  {q:"Comment fonctionne l'abonnement ?",a:"PUR propose un essai gratuit de 14 jours sans carte bancaire requise. À l'issue de l'essai, un abonnement mensuel de 9,99 €/mois est requis pour continuer à utiliser toutes les fonctionnalités. Résiliable à tout moment."},
+  {q:"Comment fonctionne l’abonnement ?",a:"PUR propose un essai gratuit de 14 jours sans carte bancaire requise. À l'issue de l’essai, un abonnement mensuel de 9,99 €/mois est requis pour continuer à utiliser toutes les fonctionnalités. Résiliable à tout moment."},
 ];
 
 export function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSignOut:()=>void}){
-  const{isPremium,screenings,setIsPremium,email,id}=useUserStore();
+  const{isPremium,screenings,email,id}=useUserStore();
   const isGuest=id==="guest";
   const toast=useToast();
   const[showUp,setShowUp]=useState(false);const[showAuth,setShowAuth]=useState(false);
   const[showLegal,setShowLegal]=useState(false);
   const[openFaq,setOpenFaq]=useState<number|null>(null);
-  const trialDaysLeft=14;
+  const trialDaysLeft=SUB.TRIAL;
+
+  async function openBillingPortal(){
+    try{
+      const session=await auth.getSession();
+      const token=session?.access_token;
+      if(!token){toast("Connectez-vous pour gérer votre abonnement","info");return;}
+
+      const res=await fetch("/api/stripe/portal",{method:"POST",headers:{Authorization:`Bearer ${token}`}});
+      const data=await res.json();
+      if(!res.ok||!data.url){toast("Portail d'abonnement indisponible","info");return;}
+      window.location.href=data.url;
+    }catch{
+      toast("Portail d'abonnement indisponible","info");
+    }
+  }
 
   return(
     <div style={{flex:1,overflowY:"auto",paddingBottom:80,animation:"screenIn .28s ease",background:T.bg}}>
@@ -45,8 +61,8 @@ export function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSign
         {!isPremium&&<button onClick={()=>setShowUp(true)} style={{width:"100%",background:T.forest,borderRadius:16,padding:20,marginBottom:16,cursor:"pointer",textAlign:"left",fontFamily:"inherit",border:"none"}}>
           <p style={{fontSize:16,fontWeight:800,color:"#E8F0EB",marginBottom:5}}>Passer à Premium</p>
           <p style={{fontSize:12,color:"rgba(200,230,201,0.6)",marginBottom:14,lineHeight:1.6}}>Analyses illimitées · Bilans complets · Calcul Zakat automatique</p>
-          <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:12}}><span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"#E8F0EB"}}>{SUB.PRICE}€</span><span style={{fontSize:12,color:"rgba(200,230,201,0.5)"}}>/ mois après {SUB.TRIAL} jours d'essai</span></div>
-          <div style={{background:"#E8F0EB",borderRadius:10,padding:"10px",textAlign:"center",fontSize:13,fontWeight:700,color:T.forest}}>Commencer l'essai gratuit</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:12}}><span style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"#E8F0EB"}}>{SUB.PRICE}€</span><span style={{fontSize:12,color:"rgba(200,230,201,0.5)"}}>/ mois après {SUB.TRIAL} jours d’essai</span></div>
+          <div style={{background:"#E8F0EB",borderRadius:10,padding:"10px",textAlign:"center",fontSize:13,fontWeight:700,color:T.forest}}>Commencer l’essai gratuit</div>
         </button>}
         {isGuest
           ?<button onClick={()=>setShowAuth(true)} style={{width:"100%",background:T.surface,border:`1px solid ${T.border}`,borderRadius:14,padding:15,marginBottom:12,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",fontFamily:"inherit",textAlign:"left"}}><div style={{display:"flex",gap:10,alignItems:"center"}}><span style={{fontSize:16}}>🔐</span><span style={{fontSize:13,color:T.text}}>Se connecter / Créer un compte</span></div><span style={{color:T.textMuted}}>›</span></button>
@@ -73,7 +89,7 @@ export function ProfileScreen({setTab,onSignOut}:{setTab:(t:string)=>void;onSign
             </div>}
           </div>
         ))}
-        {isPremium&&<button style={{...BS.btnGhost,width:"100%",marginTop:18,color:T.red,borderColor:`${T.red}20`}} onClick={()=>{setIsPremium(false);toast("Abonnement annulé","info");}}>Annuler l'abonnement</button>}
+        {isPremium&&<button style={{...BS.btnGhost,width:"100%",marginTop:18,color:T.red,borderColor:`${T.red}20`}} onClick={openBillingPortal}>Gérer / annuler l’abonnement</button>}
       </div>
       {showUp&&<UpgradeModal onClose={()=>setShowUp(false)}/>}
       {showAuth&&<AuthModal onClose={()=>setShowAuth(false)}/>}

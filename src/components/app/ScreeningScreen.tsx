@@ -4,7 +4,7 @@ import { useUserStore } from "@/store/usePortfolioStore";
 import { useGamificationStore } from "@/store/useGamificationStore";
 import { usePortfolios } from "@/hooks/usePortfolios";
 import { useSearch, useDebounce } from "@/hooks/useStock";
-import { T, BS, scoreInfo } from "@/components/ui/tokens";
+import { T, BS } from "@/components/ui/tokens";
 import { StockCard } from "./StockCard";
 import { UpgradeModal } from "./UpgradeModal";
 
@@ -23,6 +23,8 @@ const POPULAR_STOCKS=[
   {ticker:"GOOGL",name:"Alphabet",       score:58, change:+0.7,  sector:"Tech",      pays:"USA",   div:false, status:"douteux"},
 ];
 
+interface SearchResult { ticker: string; name: string; exchange: string; }
+
 const SCREEN_FILTERS=[
   {id:"all",      label:"Tous"},
   {id:"conforme", label:"Conforme"},
@@ -38,14 +40,13 @@ const SCREEN_FILTERS=[
 
 export function ScreeningScreen({openReport}:{openReport:(t:string)=>void}){
   const isPremium=useUserStore(s=>s.isPremium);
-  const inc=useUserStore(s=>s.incScreenings);
   const pfCtx=usePortfolios();
   const[q,setQ]=useState("");const[ticker,setTicker]=useState<string|null>(null);
   const[showUp,setShowUp]=useState(false);
   const[screenFilter,setScreenFilter]=useState<string>("all");
   const dq=useDebounce(q,300);const{data:sr}=useSearch(dq);
   const gStore=useGamificationStore();
-  const doSearch=(t:string)=>{inc();gStore.trackAnalysis();gStore.checkStreak();setTicker(t);setQ(t);};
+  const doSearch=(t:string)=>{gStore.trackAnalysis();gStore.checkStreak();setTicker(t);setQ(t);};
   const filtered=useMemo(()=>POPULAR_STOCKS.filter(s=>{
     if(screenFilter==="all")return true;
     if(screenFilter==="conforme")return s.status==="conforme";
@@ -77,7 +78,7 @@ export function ScreeningScreen({openReport}:{openReport:(t:string)=>void}){
           </div>
           {sr?.results?.length>0&&q&&(
             <div style={{position:"absolute",top:56,left:0,right:56,background:T.surface,border:`1px solid ${T.borderMid}`,borderRadius:12,zIndex:10,overflow:"hidden",boxShadow:"0 8px 24px rgba(0,0,0,0.1)"}}>
-              {sr.results.slice(0,6).map((r:any)=>(
+              {(sr.results as SearchResult[]).slice(0,6).map((r)=>(
                 <button key={r.ticker} onClick={()=>doSearch(r.ticker)} style={{width:"100%",padding:"11px 15px",display:"flex",justifyContent:"space-between",background:"none",border:"none",borderBottom:`1px solid ${T.border}`,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
                   <div><div style={{fontSize:13,fontWeight:700,color:T.text}}>{r.ticker}</div><div style={{fontSize:11,color:T.textSub}}>{r.name}</div></div>
                   <span style={{fontSize:10,color:T.textMuted,background:T.surface2,padding:"2px 7px",borderRadius:6}}>{r.exchange}</span>

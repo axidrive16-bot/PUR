@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fmpService, FMP_AVAILABLE, buildMockAsset } from "@/services/market";
 import { AAOIFI_RULES, calcScore, scoreToStatus } from "@/domain/aaoifi";
+import { incrementScreeningIfAllowed, quotaErrorResponse } from "@/lib/subscription";
 import type { Asset, ChartPeriod } from "@/domain/types";
 
 function fmt(cap: number | undefined): string {
@@ -23,8 +24,11 @@ export async function GET(
   { params }: { params: Promise<{ ticker: string }> }
 ) {
   const { ticker: rawTicker } = await params;
-  const ticker = rawTicker.toUpperCase();
-  const period = (req.nextUrl.searchParams.get("period") ?? "1M") as ChartPeriod;
+  const ticker = rawTicker.trim().toUpperCase();
+  const periodParam = req.nextUrl.searchParams.get("period") ?? "1M";
+  const period = (["1D", "1S", "1M", "1A"] as const).includes(periodParam as ChartPeriod)
+    ? periodParam as ChartPeriod
+    : "1M";
 
   try {
     // ── Mode DÉMO ───────────────────────────────────────────────
@@ -33,6 +37,9 @@ export async function GET(
       if (!asset) return NextResponse.json({ error: "Ticker non disponible en mode démo" }, { status: 404 });
       return NextResponse.json({ asset, history:{"1D":[],"1S":[],"1M":[],"1A":[]}, ratios:null });
     }
+
+    const quota = await incrementScreeningIfAllowed(req);
+    if (!quota.allowed) return quotaErrorResponse(quota);
 
     // ── Mode PRODUCTION ─────────────────────────────────────────
     const [quote, profile, ratios, history] = await Promise.all([
@@ -74,7 +81,7 @@ export async function GET(
       ratioRevHaram: rHaram,
       ratioCash:     rCash,
       scoreHistory:  ratios?.map(r => r.score).slice(0, 8) ?? [],
-      periods:       { "1D":[], "1S":[], "1M":[], "1A":[], [period]: history } as any,
+      periods:       { "1D": [], "1S": [], "1M": [], "1A": [], [period]: history },
       volatility:    vol(profile.beta ?? quote.beta),
       beta:          safe(profile.beta ?? quote.beta ?? 1),
       description:   profile.description,
@@ -91,8 +98,17 @@ export async function GET(
     };
 
     return NextResponse.json(
-      { asset, history: { "1D":[], "1S":[], "1M":[], "1A":[], [period]: history } as any, ratios },
-      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } }
+      {
+        asset,
+        history: { "1D": [], "1S": [], "1M": [], "1A": [], [period]: history },
+        ratios,
+        usage: {
+          isPremium: quota.isPremium,
+          screeningsRemaining: quota.screeningsRemaining,
+          screeningsToday: quota.screeningsToday,
+        },
+      },
+      { headers: { "Cache-Control": "private, no-store" } }
     );
   } catch (err) {
     console.error("[API/stock]", err);

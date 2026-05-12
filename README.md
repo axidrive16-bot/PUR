@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PUR
 
-## Getting Started
+PUR est un SaaS Next.js pour analyser la conformité d'actions/ETF selon une méthodologie AAOIFI, suivre un portefeuille, estimer la purification des dividendes et gérer un abonnement Premium.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 App Router
+- React 19
+- Supabase Auth + tables applicatives
+- Stripe Checkout + Customer Portal
+- Financial Modeling Prep pour les données marché/fondamentales
+- SWR pour le cache client
+- Zustand pour l'état local
+
+## Démarrage local
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir ensuite [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables d'environnement
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Description |
+| --- | --- |
+| `NEXT_PUBLIC_APP_URL` | URL canonique utilisée pour les retours Stripe. |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL du projet Supabase. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clé anon publique Supabase utilisée par le client historique. |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Clé publishable utilisée par les helpers `@supabase/ssr`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé serveur pour valider les tokens et lire/écrire les abonnements/quotas. |
+| `FMP_API_KEY` | Clé Financial Modeling Prep. Sans clé, l'app bascule en données de démonstration. |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Clé publique Stripe. |
+| `STRIPE_SECRET_KEY` | Clé secrète Stripe côté serveur. |
+| `STRIPE_PRICE_ID` | Price ID Stripe de l'abonnement Premium mensuel. |
+| `STRIPE_WEBHOOK_SECRET` | Secret de signature du webhook Stripe. |
 
-## Learn More
+## Quotas et Premium
 
-To learn more about Next.js, take a look at the following resources:
+Les analyses d'actions passent par `/api/stock/[ticker]`. En mode production FMP, cette route vérifie le token Supabase et consomme un quota journalier côté serveur avant d'appeler le fournisseur de données. Les utilisateurs Premium (`active` ou `trialing`, avec période valide si présente) reçoivent un quota illimité applicatif.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stripe
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `/api/stripe/checkout` crée une session Checkout avec 14 jours d'essai.
+- `/api/stripe/webhook` synchronise les statuts d'abonnement dans Supabase.
+- `/api/stripe/portal` crée une session Customer Portal pour gérer ou annuler l'abonnement.
 
-## Deploy on Vercel
+## Commandes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run dev      # développement
+npm run build    # build production
+npm run start    # serveur production local
+npm run lint              # lint ESLint
+npm run check:connections # vérifie Supabase/FMP avec les variables locales
+npx tsc --noEmit          # vérification TypeScript
+```

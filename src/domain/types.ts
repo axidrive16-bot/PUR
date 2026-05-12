@@ -78,6 +78,11 @@ export interface StockApiResponse {
   asset:   Asset;
   history: Record<ChartPeriod, ChartPoint[]>;
   ratios:  AAOIFIRatios[] | null;
+  usage?: {
+    isPremium: boolean;
+    screeningsRemaining: number;
+    screeningsToday: number;
+  };
 }
 
 export interface UserPreferences {

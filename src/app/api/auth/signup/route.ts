@@ -22,5 +22,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  if (data.user) {
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .upsert({ id: data.user.id, email }, { onConflict: "id" });
+    if (profileError) console.error("[auth/signup.profile]", profileError.message);
+  }
+
   return NextResponse.json({ user: data.user });
 }

@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { usePortfolios } from "@/hooks/usePortfolios";
 import { useToast } from "@/components/ui/Toast";
+import { portfolioDB } from "@/lib/db";
+import { useUserStore } from "@/store/usePortfolioStore";
 import { T } from "@/components/ui/tokens";
 import { buildPortfolio } from "./portfolioBuilderEngine";
 import { PortfolioBuilderForm } from "./PortfolioBuilderForm";
@@ -19,6 +21,7 @@ export function PortfolioBuilderScreen({ onBack, openReport }: Props) {
   const [lastInput, setLast]    = useState<BuilderInput | null>(null);
   const pfCtx = usePortfolios();
   const toast = useToast();
+  const userId = useUserStore(s => s.id);
 
   const handleGenerate = (input: BuilderInput) => {
     setLast(input);
@@ -33,7 +36,7 @@ export function PortfolioBuilderScreen({ onBack, openReport }: Props) {
   const handleSave = () => {
     if (!proposal) return;
     const pfName = proposal.name.slice(0, 40);
-    pfCtx.createPf(pfName);
+    const newPortfolioId = pfCtx.createPf(pfName);
     // Add each allocation as a holding with qty=1 at current price
     proposal.allocations.forEach(a => {
       const d = MOCK_DATA[a.ticker];
@@ -49,7 +52,11 @@ export function PortfolioBuilderScreen({ onBack, openReport }: Props) {
         score, status, scoreHistory: [], periods: { "1D":[], "1S":[], "1M":[], "1A":[] },
         opportunities: false, newlyHalal: false, whyHalal: [],
       };
-      pfCtx.addToActive(asset, Math.max(1, Math.round(a.amount / d.price)));
+      const qty = Math.max(1, Math.round(a.amount / d.price));
+      pfCtx.addToActive(asset, qty, newPortfolioId);
+      if (userId !== "guest") {
+        portfolioDB.add(userId, asset.ticker, qty, asset.price).catch(() => {});
+      }
     });
     toast(`"${pfName}" sauvegardé`);
     onBack();

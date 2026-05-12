@@ -19,3 +19,6 @@ export const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID ?? "";
 
 /** Webhook signing secret */
 export const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? "";
+
+/** Canonical application URL used for Stripe redirects */
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "http://localhost:3000";

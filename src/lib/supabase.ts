@@ -6,9 +6,21 @@ const SUPABASE_SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY     ?? "";
 
 /** True si les variables d'environnement Supabase sont présentes */
 export const SUPABASE_AVAILABLE = !!(SUPABASE_URL && SUPABASE_ANON);
+export const SUPABASE_ADMIN_AVAILABLE = !!(SUPABASE_URL && SUPABASE_SERVICE);
 
 let _supabase:      SupabaseClient | null = null;
 let _supabaseAdmin: SupabaseClient | null = null;
+let browserAuthLock: Promise<void> = Promise.resolve();
+
+async function serializedAuthLock<R>(
+  _name: string,
+  _acquireTimeout: number,
+  fn: () => Promise<R>,
+): Promise<R> {
+  const run = browserAuthLock.then(fn, fn);
+  browserAuthLock = run.then(() => undefined, () => undefined);
+  return run;
+}
 
 export function getSupabase(): SupabaseClient {
   if (!_supabase) {
@@ -19,7 +31,13 @@ export function getSupabase(): SupabaseClient {
         "placeholder-anon-key"
       );
     } else {
-      _supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON);
+      _supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth: {
+          // Serialize in-tab auth reads so React dev double-renders and simultaneous
+          // Supabase queries cannot steal each other’s Web Lock.
+          lock: serializedAuthLock,
+        },
+      });
     }
   }
   return _supabase;

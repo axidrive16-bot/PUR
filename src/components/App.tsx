@@ -105,7 +105,7 @@ export default function App(){
 
   // ── Subscription validation ────────────────────────────────────
   useEffect(()=>{
-    if(userId==="guest")return;
+    if(userId==="guest"||!prefsLoaded)return;
     auth.getSession().then(session=>{
       if(!session)return;
       fetch("/api/subscription/validate",{headers:{Authorization:`Bearer ${session.access_token}`}})
@@ -113,11 +113,12 @@ export default function App(){
         .then(d=>{if(d?.isPremium!==undefined)setIsPremium(d.isPremium);})
         .catch(()=>{});
     });
-  },[userId,setIsPremium]);
+  },[userId,prefsLoaded,setIsPremium]);
 
   // ── Portfolio DB sync ──────────────────────────────────────────
   useEffect(()=>{
     if(userId==="guest"){pfCtx.syncFromDB([]);return;}
+    if(!prefsLoaded)return;
     portfolioDB.list(userId).then(rows=>{
       if(!rows.length)return;
       const holdings=rows.map(r=>({
@@ -133,7 +134,7 @@ export default function App(){
       })) as PortfolioItem[];
       pfCtx.syncFromDB(holdings);
     }).catch(()=>{});
-  },[userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  },[userId,prefsLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Splash timing ──────────────────────────────────────────────
   useEffect(()=>{

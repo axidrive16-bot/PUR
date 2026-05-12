@@ -133,28 +133,61 @@ export const fmpService = {
     return parseAAOIFIFromFMP(balances, incomes);
   },
 
-  /** Historique de prix pour le chart — TTL variable selon la période */
+  /** Historique de prix réel pour le chart — compatible actions, ETF, indices, forex, crypto et matières premières. */
   async getPriceHistory(ticker: string, period: ChartPeriod): Promise<ChartPoint[]> {
     const now = new Date();
-    const fromDate = (days: number) =>
-      new Date(now.getTime() - days * 86_400_000).toISOString().split("T")[0];
+    const isoDate = (date: Date) => date.toISOString().split("T")[0];
+    const fromDate = (days: number) => isoDate(new Date(now.getTime() - days * 86_400_000));
+    const to = isoDate(now);
 
-    const cfg: Record<ChartPeriod, { path: string; ttl: number }> = {
-      "1D": { path: `/historical-chart/5min?symbol=${ticker}&from=${fromDate(1)}`,   ttl: 60_000      },
-      "1S": { path: `/historical-chart/1hour?symbol=${ticker}&from=${fromDate(7)}`,  ttl: 300_000     },
-      "1M": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(30)}`,  ttl: 3_600_000   },
-      "1A": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(365)}`, ttl: 3_600_000   },
+    const cfg: Record<ChartPeriod, { paths: string[]; ttl: number }> = {
+      "1D": {
+        paths: [
+          `/historical-chart/5min?symbol=${ticker}&from=${fromDate(1)}&to=${to}`,
+          `/historical-price-eod/full?symbol=${ticker}&from=${fromDate(1)}&to=${to}`,
+        ],
+        ttl: 60_000,
+      },
+      "1S": {
+        paths: [
+          `/historical-chart/1hour?symbol=${ticker}&from=${fromDate(7)}&to=${to}`,
+          `/historical-price-eod/full?symbol=${ticker}&from=${fromDate(7)}&to=${to}`,
+        ],
+        ttl: 300_000,
+      },
+      "1M": {
+        paths: [`/historical-price-eod/full?symbol=${ticker}&from=${fromDate(30)}&to=${to}`],
+        ttl: 3_600_000,
+      },
+      "1A": {
+        paths: [`/historical-price-eod/full?symbol=${ticker}&from=${fromDate(365)}&to=${to}`],
+        ttl: 3_600_000,
+      },
     };
 
-    const { path, ttl } = cfg[period];
-    const raw = await fmpFetch<unknown>(path, ttl);
-    const pts: Array<{ date?: string; datetime?: string; close: number }> =
-      Array.isArray(raw) ? raw : (raw as { historical?: unknown[] } | null)?.historical ?? [];
+    const parseHistory = (raw: unknown): ChartPoint[] => {
+      const rows: unknown[] = Array.isArray(raw)
+        ? raw
+        : (raw as { historical?: unknown[] } | null)?.historical ?? [];
 
-    return pts
-      .reverse()
-      .map(p => ({ t: new Date(p.date ?? p.datetime ?? "").getTime(), v: p.close }))
-      .filter(p => !isNaN(p.t) && p.v > 0);
+      return rows
+        .map(row => {
+          const p = row as { date?: string; datetime?: string; close?: unknown; adjClose?: unknown; price?: unknown };
+          const t = new Date(p.datetime ?? p.date ?? "").getTime();
+          const v = Number(p.close ?? p.adjClose ?? p.price);
+          return { t, v };
+        })
+        .filter(p => Number.isFinite(p.t) && Number.isFinite(p.v) && p.v > 0)
+        .sort((a, b) => a.t - b.t);
+    };
+
+    const { paths, ttl } = cfg[period];
+    for (const path of paths) {
+      const points = parseHistory(await fmpFetch<unknown>(path, ttl));
+      if (points.length > 0) return points;
+    }
+
+    return [];
   },
 
   /** Recherche de tickers — utilise search-symbol si ticker exact, sinon search-name */

@@ -34,7 +34,7 @@ export function buildPortfolio(input: BuilderInput): PortfolioProposal {
   const { amount, strategy, risk, sectors, diversif, region } = input;
 
   // 1. Candidate pool: conforme + region filter
-  let pool = COMPLIANT_TICKERS.filter(t => matchesRegion(t, region));
+  const pool = COMPLIANT_TICKERS.filter(t => matchesRegion(t, region));
 
   // 2. Sector preference boost (if sectors selected)
   const sectorFavored = new Set<string>();

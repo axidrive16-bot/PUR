@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getStripe, STRIPE_PRICE_ID } from "@/lib/stripe";
+import { APP_URL, getStripe, STRIPE_PRICE_ID } from "@/lib/stripe";
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,8 +33,6 @@ export async function POST(req: NextRequest) {
       customerId = customer.id;
     }
 
-    const origin = req.headers.get("origin") ?? "https://localhost:3000";
-
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
@@ -43,8 +41,8 @@ export async function POST(req: NextRequest) {
         trial_period_days: 14,
         metadata: { supabase_user_id: user.id },
       },
-      success_url: `${origin}/app?checkout=success`,
-      cancel_url:  `${origin}/app?checkout=cancelled`,
+      success_url: `${APP_URL}/app?checkout=success`,
+      cancel_url:  `${APP_URL}/app?checkout=cancelled`,
       metadata: { supabase_user_id: user.id },
     });
 

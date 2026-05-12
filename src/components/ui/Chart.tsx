@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useRef, memo } from "react";
+import { useState, useRef, memo } from "react";
 import type { ChartPoint } from "@/domain/types";
 import { T, useCur } from "./tokens";
 
@@ -25,7 +25,7 @@ export const Chart = memo(({data,color=T.emerald,height=130,showYAxis=true,label
   const hovPt=hov!==null?pts[hov]:null;
   const fmtV=(v:number)=>{const cv=v*r;return cv>=1000?`${(cv/1000).toFixed(1)}k`:`${cv.toFixed(0)}`;};
   const fmtT=(ts:number)=>{const d=new Date(ts);return d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"});};
-  const onMove=useCallback((e:React.MouseEvent|React.TouchEvent)=>{
+  const onMove=(e:React.MouseEvent|React.TouchEvent)=>{
     if(!svgRef.current)return;
     const rect=svgRef.current.getBoundingClientRect();
     const cx="touches" in e?e.touches[0]?.clientX||0:e.clientX;
@@ -33,11 +33,11 @@ export const Chart = memo(({data,color=T.emerald,height=130,showYAxis=true,label
     let ci=0,md=Infinity;
     pts.forEach((p,i)=>{const d=Math.abs(p.x-xS);if(d<md){md=d;ci=i;}});
     setHov(ci);
-  },[pts]);
+  };
 
   if(!data.length)return(
     <div style={{height,background:T.surface2,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <span style={{fontSize:12,color:T.textMuted}}>Données en cours de chargement…</span>
+      <span style={{fontSize:12,color:T.textMuted}}>Historique de cours indisponible</span>
     </div>
   );
 
@@ -99,14 +99,14 @@ function polarToCart(cx:number,cy:number,r:number,deg:number){const rad=deg*Math
 export function PieChart({segments}:{segments:{label:string;pct:number;color:string}[]}){
   const[hov,setHov]=useState<number|null>(null);
   const R=52,ri=30,cx=70,cy=70;
-  let angle=-90;
-  const paths=segments.filter(s=>s.pct>0).map((s,i)=>{
-    const start=angle;const sweep=(s.pct/100)*360;
+  const visibleSegments=segments.filter(s=>s.pct>0);
+  const paths=visibleSegments.map((s,i)=>{
+    const start=-90+visibleSegments.slice(0,i).reduce((sum,seg)=>sum+(seg.pct/100)*360,0);
+    const sweep=(s.pct/100)*360;
     const sA=polarToCart(cx,cy,R,start),eA=polarToCart(cx,cy,R,start+sweep);
     const iE=polarToCart(cx,cy,ri,start+sweep),iS=polarToCart(cx,cy,ri,start);
     const large=sweep>180?1:0;
     const d=`M${sA.x.toFixed(2)},${sA.y.toFixed(2)} A${R},${R} 0 ${large} 1 ${eA.x.toFixed(2)},${eA.y.toFixed(2)} L${iE.x.toFixed(2)},${iE.y.toFixed(2)} A${ri},${ri} 0 ${large} 0 ${iS.x.toFixed(2)},${iS.y.toFixed(2)} Z`;
-    angle+=sweep;
     return{d,color:s.color,label:s.label,pct:s.pct,i};
   });
   const hSeg=hov!==null?segments[hov]:null;

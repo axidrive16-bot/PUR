@@ -1,20 +1,25 @@
 "use client";
-import { useState, useCallback } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { T } from "./tokens";
 
-export let _toast: ((m:string,t?:string)=>void) | null = null;
-export const useToast = () => _toast ?? ((_m:string) => {});
+type ToastType = "success" | "error" | "info" | string;
+type ToastFn = (message: string, type?: ToastType) => void;
+
+const ToastContext = createContext<ToastFn>(() => {});
+
+export const useToast = () => useContext(ToastContext);
 
 export function ToastProvider({children}:{children:React.ReactNode}){
-  const[ts,set]=useState<{id:number;msg:string;type:string}[]>([]);
-  const add=useCallback((msg:string,type="success")=>{
+  const[ts,set]=useState<{id:number;msg:string;type:ToastType}[]>([]);
+  const add=useCallback<ToastFn>((msg,type="success")=>{
     const id=Date.now();
     set(t=>[...t,{id,msg,type}]);
     setTimeout(()=>set(t=>t.filter(x=>x.id!==id)),3000);
   },[]);
-  _toast=add;
+  const value = useMemo(() => add, [add]);
+
   return(
-    <>
+    <ToastContext.Provider value={value}>
       {children}
       <div style={{position:"fixed",top:52,left:"50%",transform:"translateX(-50%)",width:"calc(100% - 32px)",maxWidth:394,zIndex:999,display:"flex",flexDirection:"column",gap:7,pointerEvents:"none"}}>
         {ts.map(t=>(
@@ -24,6 +29,6 @@ export function ToastProvider({children}:{children:React.ReactNode}){
           </div>
         ))}
       </div>
-    </>
+    </ToastContext.Provider>
   );
 }
