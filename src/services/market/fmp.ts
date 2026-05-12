@@ -140,8 +140,8 @@ export const fmpService = {
       new Date(now.getTime() - days * 86_400_000).toISOString().split("T")[0];
 
     const cfg: Record<ChartPeriod, { path: string; ttl: number }> = {
-      "1D": { path: `/historical-chart/5min?symbol=${ticker}&from=${fromDate(1)}`,   ttl: 60_000      },
-      "1S": { path: `/historical-chart/1hour?symbol=${ticker}&from=${fromDate(7)}`,  ttl: 300_000     },
+      "1D": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(5)}`,   ttl: 60_000      },
+      "1S": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(7)}`,   ttl: 300_000     },
       "1M": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(30)}`,  ttl: 3_600_000   },
       "1A": { path: `/historical-price-full?symbol=${ticker}&from=${fromDate(365)}`, ttl: 3_600_000   },
     };

@@ -6,7 +6,7 @@ import { watchlistDB } from "@/lib/db";
 import { calcPurification } from "@/domain/aaoifi";
 import { useStock } from "@/hooks/useStock";
 import type { ChartPeriod } from "@/domain/types";
-import { T, BS, STATUS, scoreInfo, useCur, mkP } from "@/components/ui/tokens";
+import { T, BS, STATUS, scoreInfo, useCur } from "@/components/ui/tokens";
 import { Sk } from "@/components/ui/Modal";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { Chart } from "@/components/ui/Chart";
@@ -31,8 +31,7 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
   const enriched=useMemo(()=>{
     if(!asset)return{"1D":[],"1S":[],"1M":[],"1A":[]};
     const hist=data?.history?.[period]??[];
-    if(hist.length>0)return{...asset.periods,[period]:hist};
-    return mkP(asset.price,(asset.beta??1)*.015,(asset.change??0)>0?.8:-.3);
+    return{...asset.periods,[period]:hist};
   },[asset,data,period]);
 
   if(isLoading)return(
@@ -43,7 +42,6 @@ export function StockCard({ticker,onReport,pfCtx}:{ticker:string;onReport:(t:str
   if(error||!asset)return<div style={{background:T.redBg,border:`1px solid ${T.red}22`,borderRadius:16,padding:18,color:T.red,fontSize:13}}>Ticker introuvable : {ticker}</div>;
 
   const cfg=STATUS[asset.status]??STATUS["conforme"]??STATUS.halal;
-  const si=scoreInfo(asset.score);
   const isInPf=pfCtx.inActive(ticker);
   const currentQty=pfCtx.getQty(ticker);
   const isWatched=inWl(ticker);
